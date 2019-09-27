@@ -1,0 +1,8 @@
+prefix=/home/rob/Documents/Robotics/catkin_ws/devel
+
+Name: exploration_msgs
+Description: Description of exploration_msgs
+Version: 0.4.2
+Cflags: -I/home/rob/Documents/Robotics/catkin_ws/devel/include
+Libs: -L/home/rob/Documents/Robotics/catkin_ws/devel/lib 
+Requires: actionlib_msgs geometry_msgs message_runtime

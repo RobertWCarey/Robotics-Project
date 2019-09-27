@@ -1,0 +1,8 @@
+prefix=/home/rob/Documents/Robotics/catkin_ws/devel
+
+Name: astar_path_planner
+Description: Description of astar_path_planner
+Version: 0.0.1
+Cflags: -I/home/rob/Documents/Robotics/catkin_ws/devel/include
+Libs: -L/home/rob/Documents/Robotics/catkin_ws/devel/lib 
+Requires: 

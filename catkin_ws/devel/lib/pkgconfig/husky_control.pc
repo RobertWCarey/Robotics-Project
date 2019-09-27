@@ -1,0 +1,8 @@
+prefix=/home/rob/Documents/Robotics/catkin_ws/devel
+
+Name: husky_control
+Description: Description of husky_control
+Version: 0.3.4
+Cflags: 
+Libs: -L/home/rob/Documents/Robotics/catkin_ws/devel/lib 
+Requires: 
