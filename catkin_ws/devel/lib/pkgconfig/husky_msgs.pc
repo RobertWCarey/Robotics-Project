@@ -1,8 +1,0 @@
-prefix=/home/rob/Documents/Robotics/catkin_ws/devel
-
-Name: husky_msgs
-Description: Description of husky_msgs
-Version: 0.3.4
-Cflags: -I/home/rob/Documents/Robotics/catkin_ws/devel/include
-Libs: -L/home/rob/Documents/Robotics/catkin_ws/devel/lib 
-Requires: std_msgs message_runtime

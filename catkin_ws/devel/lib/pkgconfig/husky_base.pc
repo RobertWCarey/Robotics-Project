@@ -1,8 +1,0 @@
-prefix=/home/rob/Documents/Robotics/catkin_ws/devel
-
-Name: husky_base
-Description: Description of husky_base
-Version: 0.3.4
-Cflags: -I/home/rob/Documents/Robotics/catkin_ws/src/husky/husky_base/include -I/usr/include
-Libs: -L/home/rob/Documents/Robotics/catkin_ws/devel/lib -lhorizon_legacy /usr/lib/x86_64-linux-gnu/libboost_chrono.so /usr/lib/x86_64-linux-gnu/libboost_system.so
-Requires: diagnostic_updater hardware_interface husky_msgs roscpp sensor_msgs
