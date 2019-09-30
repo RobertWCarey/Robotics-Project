@@ -1,2 +1,2 @@
 brick_search
--DCATKIN_DEVEL_PREFIX=/home/will/Documents/UNI/2019/Spring/AdvancedRobotics/Robotics-Project/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/will/Documents/UNI/2019/Spring/AdvancedRobotics/Robotics-Project/catkin_ws/install -G Unix Makefiles
+-DCATKIN_DEVEL_PREFIX=/home/rob/Documents/Robotics-Project/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/rob/Documents/Robotics-Project/catkin_ws/install -G Unix Makefiles
