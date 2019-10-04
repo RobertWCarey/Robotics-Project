@@ -1,5 +1,6 @@
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 
 #include <opencv2/core.hpp>
 
@@ -217,6 +218,8 @@ void BrickSearch::mainLoop()
   // Wait for the TurtleBot to localise
   ROS_INFO("Localising...");
   bool twisty = true;
+  ROS_INFO_STREAM(localised_);
+
   while (ros::ok())
   {
     geometry_msgs::Pose2D localpose = getPose2d();
@@ -282,8 +285,8 @@ void BrickSearch::mainLoop()
   ROS_INFO_STREAM("Current pose: " << pose_2d);
 
   // Move forward 0.5 m
-  pose_2d.x += 100 * std::cos(pose_2d.theta);
-  pose_2d.y += 100 * std::sin(pose_2d.theta);
+  pose_2d.x += 1. * std::cos(pose_2d.theta);
+  pose_2d.y += 1. * std::sin(pose_2d.theta);
 
   ROS_INFO_STREAM("Target pose: " << pose_2d);
 
@@ -296,6 +299,13 @@ void BrickSearch::mainLoop()
   ROS_INFO("Sending goal...");
   move_base_action_client_.sendGoal(action_goal.goal);
 
+
+  /* initialize random seed: */
+  srand (time(NULL));
+  
+  double randomX, randomY;
+
+
   // This loop repeats until ROS shuts down, you probably want to put all your code in here
   while (ros::ok())
   {
@@ -304,14 +314,41 @@ void BrickSearch::mainLoop()
     // Get the state of the goal
     actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
 
-    if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+    if ((state == actionlib::SimpleClientGoalState::PENDING) || (state == actionlib::SimpleClientGoalState::ACTIVE))
     {
+
+    }
+    else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+    {
+      pose_2d = getPose2d();
+      
       // Print the state of the goal
       ROS_INFO_STREAM(state.getText());
 
+      ROS_INFO_STREAM("Current pose: " << pose_2d);
+
+      /* generate secret number between 1 and 10: */
+      randomX = (rand() % 20)/10.;
+      randomY = (rand() % 20)/10;
+      // Move forward 0.5 m
+      pose_2d.x += randomX * std::cos(pose_2d.theta);
+      pose_2d.y += randomY * std::sin(pose_2d.theta);
+
+      ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+      ROS_INFO("Sending goal...");
+      move_base_action_client_.sendGoal(action_goal.goal);
+
       // Shutdown when done
-      ros::shutdown();
+      // ros::shutdown();
     }
+    else
+    {
+      ROS_INFO("Error");
+    }
+    
 
     // Delay so the loop doesn't run too fast
     ros::Duration(0.2).sleep();
