@@ -216,13 +216,61 @@ void BrickSearch::mainLoop()
 {
   // Wait for the TurtleBot to localise
   ROS_INFO("Localising...");
+  bool twisty = true;
   while (ros::ok())
   {
-    // Turn slowly
+    geometry_msgs::Pose2D localpose = getPose2d();
     geometry_msgs::Twist twist{};
-    twist.angular.z = 1.;
-    cmd_vel_pub_.publish(twist);
-
+    
+    move_base_msgs::MoveBaseActionGoal local_goal{};
+    local_goal.goal.target_pose.header.frame_id = "map";
+    if(twisty)
+    {
+      ros::Time time = ros::Time::now();
+      ros::Time newtime;
+      ros::Duration d = ros::Duration(5, 0);
+      ROS_INFO("Spinning bitch");
+      while (ros::ok())
+      {
+        if ((newtime - time) > d)
+        {
+          break;
+        }
+        newtime = ros::Time::now();
+        // Turn slowly
+        twist.angular.z = 1.;
+        cmd_vel_pub_.publish(twist);
+      }
+      ROS_INFO("Exit Spinning bitch");
+    }
+    else
+    {
+      ROS_INFO("Gonna move to a goal cunt");
+      twist.angular.z = 0.;
+      cmd_vel_pub_.publish(twist);
+      localpose.x += 0.5 * std::cos(localpose.theta);
+      localpose.y += 0.5 * std::sin(localpose.theta);      
+      local_goal.goal.target_pose.pose = pose2dToPose(localpose);
+      move_base_action_client_.sendGoal(local_goal.goal);
+      while (ros::ok())
+      {
+        actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
+        if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+        {
+          // Print the state of the goal
+          ROS_INFO_STREAM(state.getText());
+          break;
+        } else if (state == actionlib::SimpleClientGoalState::REJECTED)
+        {
+          ROS_INFO_STREAM(state.getText());
+          break;
+        }
+        //ROS_INFO_STREAM(state.getText());
+      }
+      ros::Duration(0.1).sleep();
+    }
+    //ros::shutdown();
+    twisty = !twisty;
     if (localised_)
     {
       ROS_INFO("Localised");
@@ -247,8 +295,8 @@ void BrickSearch::mainLoop()
   ROS_INFO_STREAM("Current pose: " << pose_2d);
 
   // Move forward 0.5 m
-  pose_2d.x += 0.5 * std::cos(pose_2d.theta);
-  pose_2d.y += 0.5 * std::sin(pose_2d.theta);
+  pose_2d.x += 100 * std::cos(pose_2d.theta);
+  pose_2d.y += 100 * std::sin(pose_2d.theta);
 
   ROS_INFO_STREAM("Target pose: " << pose_2d);
 
