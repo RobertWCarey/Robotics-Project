@@ -228,7 +228,7 @@ void BrickSearch::mainLoop()
     {
       ros::Time time = ros::Time::now();
       ros::Time newtime;
-      ros::Duration d = ros::Duration(5, 0);
+      ros::Duration d = ros::Duration(2, 0);
       ROS_INFO("Spinning bitch");
       while (ros::ok())
       {
@@ -251,23 +251,10 @@ void BrickSearch::mainLoop()
       localpose.x += 0.5 * std::cos(localpose.theta);
       localpose.y += 0.5 * std::sin(localpose.theta);      
       local_goal.goal.target_pose.pose = pose2dToPose(localpose);
-      move_base_action_client_.sendGoal(local_goal.goal);
-      while (ros::ok())
-      {
-        actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
-        if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
-        {
-          // Print the state of the goal
-          ROS_INFO_STREAM(state.getText());
-          break;
-        } else if (state == actionlib::SimpleClientGoalState::REJECTED)
-        {
-          ROS_INFO_STREAM(state.getText());
-          break;
-        }
-        //ROS_INFO_STREAM(state.getText());
-      }
-      ros::Duration(0.1).sleep();
+      ros::Duration dExecute = ros::Duration(5, 0);
+      ros::Duration dPreempt = ros::Duration(5, 0);
+      actionlib::SimpleClientGoalState state = move_base_action_client_.sendGoalAndWait(local_goal.goal, dExecute, dPreempt);
+      ROS_INFO_STREAM(state.getText());
     }
     //ros::shutdown();
     twisty = !twisty;
