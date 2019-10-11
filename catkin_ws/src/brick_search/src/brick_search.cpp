@@ -341,13 +341,11 @@ void BrickSearch::mainLoop()
       ROS_INFO_STREAM("Current pose: " << pose_2d);
 
       /* generate secret number between 1 and 10: */
-      // randomX = (rand() % 20)/10.;
-      // randomY = (rand() % 20)/10;
+      randomX = (rand() % 20)/map_x_max;
+      randomY = (rand() % 20)/map_y_max;
       // Move forward 0.5 m
-      // pose_2d.x += randomX * std::cos(pose_2d.theta);
-      // pose_2d.y += randomY * std::sin(pose_2d.theta);
-      pose_2d.x += -0.01;
-      pose_2d.y += -8.01;
+      pose_2d.x += randomX * std::cos(pose_2d.theta);
+      pose_2d.y += randomY * std::sin(pose_2d.theta);
       ROS_INFO_STREAM("Target pose: " << pose_2d);
 
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
