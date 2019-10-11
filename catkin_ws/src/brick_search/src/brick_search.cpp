@@ -15,6 +15,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <actionlib/client/simple_action_client.h>
 #include <move_base_msgs/MoveBaseAction.h>
+#include "brick_search/occupancy_grid.h"
 
 namespace
 {
