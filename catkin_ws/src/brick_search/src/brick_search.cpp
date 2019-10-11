@@ -66,7 +66,8 @@ private:
   std::atomic<bool> localised_{ false };
   std::atomic<bool> brick_found_{ false };
   int image_msg_count_ = 0;
-
+  //Initialise map limit variables
+  double map_x_min = 0., map_x_max = 0., map_y_min = 0., map_y_max = 0.;
   // Transform listener
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
@@ -113,6 +114,18 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
 
   // This allows you to access the map data as an OpenCV image
   map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
+  
+  map_x_min = map_.info.origin.position.x;
+  map_x_max = map_.info.width * map_.info.resolution + map_x_min;
+
+  map_y_min = map_.info.origin.position.y;
+  map_y_max = map_.info.height * map_.info.resolution + map_y_min;
+  ROS_INFO("map x min, map x max, map y min, map y max");
+  ROS_INFO_STREAM(map_x_min);
+  ROS_INFO_STREAM(map_x_max);
+  ROS_INFO_STREAM(map_y_min);
+  ROS_INFO_STREAM(map_y_max);
+
 
   // Wait for the transform to be become available
   ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
@@ -328,12 +341,13 @@ void BrickSearch::mainLoop()
       ROS_INFO_STREAM("Current pose: " << pose_2d);
 
       /* generate secret number between 1 and 10: */
-      randomX = (rand() % 20)/10.;
-      randomY = (rand() % 20)/10;
+      // randomX = (rand() % 20)/10.;
+      // randomY = (rand() % 20)/10;
       // Move forward 0.5 m
-      pose_2d.x += randomX * std::cos(pose_2d.theta);
-      pose_2d.y += randomY * std::sin(pose_2d.theta);
-
+      // pose_2d.x += randomX * std::cos(pose_2d.theta);
+      // pose_2d.y += randomY * std::sin(pose_2d.theta);
+      pose_2d.x += -0.01;
+      pose_2d.y += -8.01;
       ROS_INFO_STREAM("Target pose: " << pose_2d);
 
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
