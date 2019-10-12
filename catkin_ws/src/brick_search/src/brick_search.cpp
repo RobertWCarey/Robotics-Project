@@ -62,8 +62,10 @@ public:
   void mainLoop();
 
 private:
-  // Variables  
-  GridPosition findGoal();
+  // Variables
+  std::vector<GridPosition> validGridPos;
+  std::vector<WorldPosition> validWorldPos;  
+  WorldPosition findGoal(const std::vector<WorldPosition> worldPositions);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
@@ -120,51 +122,35 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     map_ = get_map.response.map;
     ROS_INFO("Map received");
   }
-  occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
-  // This allows you to access the map data as an OpenCV image
-  // map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
   
-  // map_x_min = map_.info.origin.position.x;
-  // map_x_max = map_.info.width * map_.info.resolution + map_x_min;
-
-  // map_y_min = map_.info.origin.position.y;
-  // map_y_max = map_.info.height * map_.info.resolution + map_y_min;
-  // ROS_INFO("map x min, map x max, map y min, map y max");
-  // ROS_INFO_STREAM(map_x_min);
-  // ROS_INFO_STREAM(map_x_max);
-  // ROS_INFO_STREAM(map_y_min);
-  // ROS_INFO_STREAM(map_y_max);
+  occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
+  
   ROS_INFO("Print dat data bitch");
-  std::vector<GridPosition> validpos;
+  
   int y = 0;
-  GridPosition currPos, storedPos;
-  GridPosition tempgrid;
-  WorldPosition worldgrid;
+  GridPosition currGridPos;
+  WorldPosition currWorldPos;
   for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
   {
     int data = map_.data[i];
     if (data != -1 && data != 100)
     {
-      currPos.x = i%map_.info.width;
-      currPos.y = i/map_.info.width;
-      validpos.push_back(currPos);
-      tempgrid.x = currPos.x;
-      tempgrid.y = currPos.y;
-      worldgrid = occupancy_grid_.getWorldPosition(tempgrid);
-      ROS_INFO_STREAM("World position x: " << worldgrid.x);
-      ROS_INFO_STREAM("World position y: " << worldgrid.y);
-      ROS_INFO_STREAM(currPos.x);
-      ROS_INFO_STREAM(currPos.y);
-    }
+      // Store valid Grid Position
+      currGridPos.x = i%map_.info.width;
+      currGridPos.y = i/map_.info.width;
+      validGridPos.push_back(currGridPos);
 
+      // Store valid World Pos
+      currWorldPos = occupancy_grid_.getWorldPosition(currGridPos);
+      validWorldPos.push_back(currWorldPos);
+    }
       
   }
-  storedPos = validpos.back();
+        
+  // Print sizes
+  ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
+  ROS_INFO("Number of Valid World Positions %d", validWorldPos.size());
 
-    ROS_INFO_STREAM(storedPos.x);
-    ROS_INFO_STREAM(storedPos.y);
-      
-  ROS_INFO("Number of Valid Positions %d", validpos.size());
   
   // Create an occupancy grid from the occupancy grid message
   occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
@@ -201,9 +187,18 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   std::cin.get();
 }
 
-GridPosition BrickSearch::findGoal()
+WorldPosition BrickSearch::findGoal(const std::vector<WorldPosition> worldPositions)
 {
+  int numPos = worldPositions.size();
+  WorldPosition randWorldPos;
 
+  // generate random number between o and numPos-1
+  int randArrPos = rand() % numPos;
+
+  randWorldPos = worldPositions[randArrPos];
+
+  ROS_INFO("X Pos %f", randWorldPos.x);
+  ROS_INFO("Y Pos %f", randWorldPos.y);
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
