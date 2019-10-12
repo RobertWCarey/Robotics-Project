@@ -349,22 +349,22 @@ void BrickSearch::mainLoop()
   // Here's an example of getting the current pose and sending a goal to "move_base":
   geometry_msgs::Pose2D pose_2d = getPose2d();
 
-  ROS_INFO_STREAM("Current pose: " << pose_2d);
+  // ROS_INFO_STREAM("Current pose: " << pose_2d);
 
   // Move forward 0.5 m
-  pose_2d.x += 1. * std::cos(pose_2d.theta);
-  pose_2d.y += 1. * std::sin(pose_2d.theta);
+  // pose_2d.x += 1. * std::cos(pose_2d.theta);
+  // pose_2d.y += 1. * std::sin(pose_2d.theta);
 
-  ROS_INFO_STREAM("Target pose: " << pose_2d);
+  // ROS_INFO_STREAM("Target pose: " << pose_2d);
 
   // Send a goal to "move_base" with "move_base_action_client_"
   move_base_msgs::MoveBaseActionGoal action_goal{};
 
-  action_goal.goal.target_pose.header.frame_id = "map";
-  action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+  // action_goal.goal.target_pose.header.frame_id = "map";
+  // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
-  ROS_INFO("Sending goal...");
-  move_base_action_client_.sendGoal(action_goal.goal);
+  // ROS_INFO("Sending goal...");
+  // move_base_action_client_.sendGoal(action_goal.goal);
 
 
   /* initialize random seed: */
