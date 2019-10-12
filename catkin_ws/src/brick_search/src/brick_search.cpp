@@ -1,6 +1,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
+#include <vector>
 
 #include <opencv2/core.hpp>
 
@@ -74,6 +75,11 @@ private:
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
   double inflation_radius_ = 0.1;
+  struct position
+  {
+    int x;
+    int y;
+  };
 
   // Subscribe to the AMCL pose to get covariance
   ros::Subscriber amcl_pose_sub_{};
@@ -132,13 +138,20 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   // ROS_INFO_STREAM(map_y_min);
   // ROS_INFO_STREAM(map_y_max);
   ROS_INFO("Print dat data bitch");
-
-  for (int x = 0 ; x < map_.info.width*map_.info.height; x++)
+  std::vector<position> validpos;
+  int y = 0;
+  position currPos;
+  for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
   {
-    // for (int y = 0 ; x < map_.info.height; y++ )
-    // {
-      ROS_INFO("Value %d", map_.data[x]);
-    // }
+    int data = map_.data[i];
+    if (data != -1 && data != 100)
+    {
+      currPos.x = i%map_.info.width;
+      currPos.y = i/map_.info.width;
+      validpos.push_back(currPos);
+      ROS_INFO("Value %d", data);
+    }
+      
   }
   
   // Create an occupancy grid from the occupancy grid message
