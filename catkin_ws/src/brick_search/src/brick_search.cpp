@@ -73,12 +73,16 @@ private:
   // Transform listener
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
+  double inflation_radius_ = 0.1;
 
   // Subscribe to the AMCL pose to get covariance
   ros::Subscriber amcl_pose_sub_{};
 
   // Velocity command publisher
   ros::Publisher cmd_vel_pub_{};
+  
+  //Publish inflated map
+  ros::Publisher inflated_map_pub_{};
 
   // Image transport and subscriber
   image_transport::ImageTransport it_;
@@ -115,19 +119,33 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   }
 
   // This allows you to access the map data as an OpenCV image
-  map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
+  // map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
   
-  map_x_min = map_.info.origin.position.x;
-  map_x_max = map_.info.width * map_.info.resolution + map_x_min;
+  // map_x_min = map_.info.origin.position.x;
+  // map_x_max = map_.info.width * map_.info.resolution + map_x_min;
 
-  map_y_min = map_.info.origin.position.y;
-  map_y_max = map_.info.height * map_.info.resolution + map_y_min;
-  ROS_INFO("map x min, map x max, map y min, map y max");
-  ROS_INFO_STREAM(map_x_min);
-  ROS_INFO_STREAM(map_x_max);
-  ROS_INFO_STREAM(map_y_min);
-  ROS_INFO_STREAM(map_y_max);
+  // map_y_min = map_.info.origin.position.y;
+  // map_y_max = map_.info.height * map_.info.resolution + map_y_min;
+  // ROS_INFO("map x min, map x max, map y min, map y max");
+  // ROS_INFO_STREAM(map_x_min);
+  // ROS_INFO_STREAM(map_x_max);
+  // ROS_INFO_STREAM(map_y_min);
+  // ROS_INFO_STREAM(map_y_max);
+  ROS_INFO("Print dat data bitch");
 
+  for (int x = 0 ; x < map_.info.width*map_.info.height; x++)
+  {
+    // for (int y = 0 ; x < map_.info.height; y++ )
+    // {
+      ROS_INFO("Value %d", map_.data[x]);
+    // }
+  }
+  
+  // Create an occupancy grid from the occupancy grid message
+  occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
+  
+  inflated_map_pub_ = nh.advertise<nav_msgs::OccupancyGrid>("map_inflated", 1, true);
+  inflated_map_pub_.publish(occupancy_grid_.getOccupancyGridMsg());
 
   // Wait for the transform to be become available
   ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
@@ -144,6 +162,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
 
   // Advertise "cmd_vel" publisher to control TurtleBot manually
   cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
+
 
   // Action client for "move_base"
   ROS_INFO("Waiting for \"move_base\" action...");
@@ -349,9 +368,13 @@ void BrickSearch::mainLoop()
       randomX = (rand() % 20)/map_x_max;
       randomY = (rand() % 20)/map_y_max;
       // Move forward 0.5 m
-      pose_2d.x += randomX * std::cos(pose_2d.theta);
-      pose_2d.y += randomY * std::sin(pose_2d.theta);
+      pose_2d.x = randomX;
+      pose_2d.y = randomY;
+
+      GridPosition posegrid = {(int)randomX, (int)randomY};
+      ROS_INFO_STREAM(occupancy_grid_.isOccupied(posegrid));
       ROS_INFO_STREAM("Target pose: " << pose_2d);
+
 
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
