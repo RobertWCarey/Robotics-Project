@@ -62,7 +62,8 @@ public:
   void mainLoop();
 
 private:
-  // Variables
+  // Variables  
+  GridPosition findGoal();
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
@@ -75,11 +76,7 @@ private:
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
   double inflation_radius_ = 0.1;
-  struct position
-  {
-    int x;
-    int y;
-  };
+  
 
   // Subscribe to the AMCL pose to get covariance
   ros::Subscriber amcl_pose_sub_{};
@@ -138,9 +135,9 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   // ROS_INFO_STREAM(map_y_min);
   // ROS_INFO_STREAM(map_y_max);
   ROS_INFO("Print dat data bitch");
-  std::vector<position> validpos;
+  std::vector<GridPosition> validpos;
   int y = 0;
-  position currPos, storedPos;
+  GridPosition currPos, storedPos;
   GridPosition tempgrid;
   WorldPosition worldgrid;
   for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
@@ -159,8 +156,6 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
       ROS_INFO_STREAM(currPos.x);
       ROS_INFO_STREAM(currPos.y);
     }
-
-    
 
       
   }
@@ -204,6 +199,11 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
   std::cin.get();
+}
+
+GridPosition BrickSearch::findGoal()
+{
+
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
