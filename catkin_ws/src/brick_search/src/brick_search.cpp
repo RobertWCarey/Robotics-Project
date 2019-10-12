@@ -65,7 +65,7 @@ private:
   // Variables
   std::vector<GridPosition> validGridPos;
   std::vector<WorldPosition> validWorldPos;  
-  WorldPosition findGoal(const std::vector<WorldPosition> worldPositions);
+  WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
@@ -105,6 +105,9 @@ private:
 // Constructor
 BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
 {
+  /* initialize random seed: */
+  srand (time(NULL));
+  
   // Wait for "static_map" service to be available
   ROS_INFO("Waiting for \"static_map\" service...");
   ros::service::waitForService("static_map");
@@ -187,7 +190,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   std::cin.get();
 }
 
-WorldPosition BrickSearch::findGoal(const std::vector<WorldPosition> worldPositions)
+WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPositions)
 {
   int numPos = worldPositions.size();
   WorldPosition randWorldPos;
@@ -199,6 +202,8 @@ WorldPosition BrickSearch::findGoal(const std::vector<WorldPosition> worldPositi
 
   ROS_INFO("X Pos %f", randWorldPos.x);
   ROS_INFO("Y Pos %f", randWorldPos.y);
+
+  return randWorldPos;
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
@@ -355,17 +360,14 @@ void BrickSearch::mainLoop()
   // Send a goal to "move_base" with "move_base_action_client_"
   move_base_msgs::MoveBaseActionGoal action_goal{};
 
-  // action_goal.goal.target_pose.header.frame_id = "map";
+  action_goal.goal.target_pose.header.frame_id = "map";
   // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
   // ROS_INFO("Sending goal...");
   // move_base_action_client_.sendGoal(action_goal.goal);
 
 
-  /* initialize random seed: */
-  srand (time(NULL));
   
-  double randomX, randomY;
 
 
   // This loop repeats until ROS shuts down, you probably want to put all your code in here
@@ -389,33 +391,44 @@ void BrickSearch::mainLoop()
 
       ROS_INFO_STREAM("Current pose: " << pose_2d);
 
-      /* generate secret number between 1 and 10: */
-      randomX = (rand() % 20)/map_x_max;
-      randomY = (rand() % 20)/map_y_max;
-      // Move forward 0.5 m
-      pose_2d.x = randomX;
-      pose_2d.y = randomY;
-      WorldPosition cheese;
-      cheese.x = pose_2d.x;
-      cheese.y = pose_2d.y;
+      // Generate Random Goal
+      WorldPosition worldPos = findRandGoal(validWorldPos);
 
-      GridPosition posegrid = occupancy_grid_.getGridPosition(cheese);
-      ROS_INFO_STREAM("Grid of target pose x: " << posegrid.x);
-      ROS_INFO_STREAM("Grid of target pose y: " << posegrid.y);
+      // Update pose with random valid goal
+      pose_2d.x = worldPos.x;
+      pose_2d.y = worldPos.y;
+
       ROS_INFO_STREAM("Target pose: " << pose_2d);
-
 
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
       ROS_INFO("Sending goal...");
       move_base_action_client_.sendGoal(action_goal.goal);
-
-      // Shutdown when done
-      // ros::shutdown();
     }
     else
     {
       ROS_INFO("Error");
+
+      pose_2d = getPose2d();
+
+      // Print the state of the goal
+      ROS_INFO_STREAM(state.getText());
+
+      ROS_INFO_STREAM("Current pose: " << pose_2d);
+
+      // Generate Random Goal
+      WorldPosition worldPos = findRandGoal(validWorldPos);
+
+      // Update pose with random valid goal
+      pose_2d.x = worldPos.x;
+      pose_2d.y = worldPos.y;
+
+      ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+      ROS_INFO("Sending goal...");
+      move_base_action_client_.sendGoal(action_goal.goal);
     }
     
 
