@@ -62,6 +62,7 @@ public:
 
 private:
   // Variables
+  OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
   std::atomic<bool> localised_{ false };

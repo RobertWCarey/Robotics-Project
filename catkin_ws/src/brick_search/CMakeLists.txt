@@ -24,6 +24,7 @@ catkin_package()
 
 add_executable(brick_search
         src/brick_search.cpp
+        src/occupancy_grid.cpp
         )
 
 target_include_directories(brick_search SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})

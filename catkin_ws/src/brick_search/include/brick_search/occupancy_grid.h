@@ -1,7 +1,7 @@
 // An undirected graph
 
-#ifndef ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
-#define ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
+#ifndef brick_search_OCCUPANCY_GRID_H
+#define brick_search_OCCUPANCY_GRID_H
 
 #include <vector>
 #include <utility>
@@ -11,7 +11,7 @@
 
 #include <nav_msgs/OccupancyGrid.h>
 
-namespace astar_path_planner
+namespace brick_search
 {
 struct WorldPosition
 {
@@ -76,6 +76,6 @@ private:
   Cell getCell(GridPosition grid_position);
 };
 
-}  // namespace astar_path_planner
+}  // namespace brick_search
 
-#endif  // ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
+#endif  // brick_search_OCCUPANCY_GRID_H
