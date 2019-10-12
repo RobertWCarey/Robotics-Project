@@ -51,6 +51,8 @@ public:
   bool isOutOfBounds(WorldPosition world_position);
   bool isOccupied(WorldPosition world_position);
   bool isOccupied(GridPosition grid_position);
+  GridPosition getGridPosition(WorldPosition world_position);
+    WorldPosition getWorldPosition(GridPosition grid_position);  // World position of the centre of the cell
   WorldPosition getWorldPosition(int id);  // World position of the centre of the cell
   Cell getCell(WorldPosition world_position);
   Cell getCell(int id);
@@ -70,9 +72,9 @@ private:
   bool isOutOfBounds(GridPosition grid_position);
   bool isOccupied(int id);
   
-  GridPosition getGridPosition(WorldPosition world_position);
+  
   GridPosition getGridPosition(int id);
-  WorldPosition getWorldPosition(GridPosition grid_position);  // World position of the centre of the cell
+
   int getCellId(GridPosition grid_position);
   Cell getCell(GridPosition grid_position);
 };

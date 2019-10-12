@@ -123,7 +123,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     map_ = get_map.response.map;
     ROS_INFO("Map received");
   }
-
+  occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
   // This allows you to access the map data as an OpenCV image
   // map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
   
@@ -140,7 +140,9 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   ROS_INFO("Print dat data bitch");
   std::vector<position> validpos;
   int y = 0;
-  position currPos;
+  position currPos, storedPos;
+  GridPosition tempgrid;
+  WorldPosition worldgrid;
   for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
   {
     int data = map_.data[i];
@@ -149,10 +151,25 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
       currPos.x = i%map_.info.width;
       currPos.y = i/map_.info.width;
       validpos.push_back(currPos);
-      ROS_INFO("Value %d", data);
+      tempgrid.x = currPos.x;
+      tempgrid.y = currPos.y;
+      worldgrid = occupancy_grid_.getWorldPosition(tempgrid);
+      ROS_INFO_STREAM("World position x: " << worldgrid.x);
+      ROS_INFO_STREAM("World position y: " << worldgrid.y);
+      ROS_INFO_STREAM(currPos.x);
+      ROS_INFO_STREAM(currPos.y);
     }
+
+    
+
       
   }
+  storedPos = validpos.back();
+
+    ROS_INFO_STREAM(storedPos.x);
+    ROS_INFO_STREAM(storedPos.y);
+      
+  ROS_INFO("Number of Valid Positions %d", validpos.size());
   
   // Create an occupancy grid from the occupancy grid message
   occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
@@ -383,9 +400,13 @@ void BrickSearch::mainLoop()
       // Move forward 0.5 m
       pose_2d.x = randomX;
       pose_2d.y = randomY;
+      WorldPosition cheese;
+      cheese.x = pose_2d.x;
+      cheese.y = pose_2d.y;
 
-      GridPosition posegrid = {(int)randomX, (int)randomY};
-      ROS_INFO_STREAM(occupancy_grid_.isOccupied(posegrid));
+      GridPosition posegrid = occupancy_grid_.getGridPosition(cheese);
+      ROS_INFO_STREAM("Grid of target pose x: " << posegrid.x);
+      ROS_INFO_STREAM("Grid of target pose y: " << posegrid.y);
       ROS_INFO_STREAM("Target pose: " << pose_2d);
 
 

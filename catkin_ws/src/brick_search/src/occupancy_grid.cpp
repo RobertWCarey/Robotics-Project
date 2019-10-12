@@ -75,4 +75,30 @@ nav_msgs::OccupancyGrid OccupancyGrid::getOccupancyGridMsg()
 {
   return map_;
 }
+
+GridPosition OccupancyGrid::getGridPosition(WorldPosition world_position)
+{
+  GridPosition grid_position{};
+
+  grid_position.x =
+      static_cast<int>(std::floor((world_position.x - map_.info.origin.position.x) / map_.info.resolution));
+
+  grid_position.y =
+      static_cast<int>(std::floor((world_position.y - map_.info.origin.position.y) / map_.info.resolution));
+
+  return grid_position;
+}
+
+WorldPosition OccupancyGrid::getWorldPosition(GridPosition grid_position)
+{
+  WorldPosition world_position{};
+
+  world_position.x = static_cast<double>(grid_position.x) * map_.info.resolution + map_.info.origin.position.x +
+                     (map_.info.resolution / 2.);
+  world_position.y = static_cast<double>(grid_position.y) * map_.info.resolution + map_.info.origin.position.y +
+                     (map_.info.resolution / 2.);
+
+  return world_position;
+}
+
 }  // namespace brick_search
