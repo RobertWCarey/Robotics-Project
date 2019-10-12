@@ -135,7 +135,6 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     ros::Duration(0.1).sleep();
   }
   ROS_INFO("Transform available");
-
   // Subscribe to "amcl_pose" to get pose covariance
   amcl_pose_sub_ = nh.subscribe("amcl_pose", 1, &BrickSearch::amclPoseCallback, this);
 
@@ -154,6 +153,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
+  std::cin.get();
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
@@ -230,6 +230,9 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 void BrickSearch::mainLoop()
 {
   // Wait for the TurtleBot to localise
+  ROS_INFO("PASE waiting for input");
+  std::cin.get();
+
   ROS_INFO("Localising...");
   bool twisty = true;
   ROS_INFO_STREAM(localised_);
