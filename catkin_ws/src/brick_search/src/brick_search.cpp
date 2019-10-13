@@ -4,6 +4,8 @@
 #include <vector>
 
 #include <opencv2/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv/cv.hpp>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -262,10 +264,63 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   }
 
   // Copy the image message to a cv_bridge image pointer
-  cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
+  cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr,"bgr8");
 
   // This is the OpenCV image
   cv::Mat& image = image_ptr->image;
+  cv::Mat hsvImage;
+  // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
+  cv::imshow("inputImage",image);
+  // imshow(fuckyacunt,hsvImage);
+
+  // ROS_INFO(image);
+  ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
+  cv::Scalar upperRed = cv::Scalar(1,1,255);
+  cv::Scalar lowerRed = cv::Scalar(0,0,100);
+
+  cv::Mat redImage;
+
+  cv::inRange(image,lowerRed,upperRed,redImage);
+  cv::imshow("awfulredcunt",redImage);
+  ROS_INFO("Red Image");
+  ROS_INFO_STREAM(redImage.at<cv::Vec3b>(5,5));
+  std::cin.get();
+  cv::Size s = redImage.size();
+  ROS_INFO_STREAM("RedImage Y" << s.height);
+  ROS_INFO_STREAM("RedImage X" << s.width);
+
+  int32_t count = 0;
+  cv::Vec3b tempVec;
+  tempVec = redImage.at<cv::Vec3b>(1000,990);
+
+  ROS_INFO_STREAM("Image" << tempVec);
+
+  for (int x =0; x< s.width; x++)
+  {
+    for (int y = 0 ; y< s.height; y++)
+    {
+      // ROS_INFO_STREAM("CurrentCount" << count);
+      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
+      tempVec = redImage.at<cv::Vec3b>(y,x);
+      for (int i = 0 ; i < 3; i++)
+      {
+        if (tempVec.val[i] > 0)
+        {
+          count ++;
+          ROS_INFO_STREAM("i"<<i);
+          ROS_INFO_STREAM("Value of vector item i" << tempVec);
+          ROS_INFO_STREAM("Y"<<y);
+          ROS_INFO_STREAM("X"<<x);
+        }
+      }
+    }
+  }
+
+  ROS_INFO_STREAM("Final Count " << count);
+  // for (auto val : image)
+  // {
+  //   ROS_INFO_STREAM(val)
+  // }
 
   // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
   // You may want to communicate more information
@@ -286,6 +341,9 @@ void BrickSearch::mainLoop()
   ROS_INFO("Localising...");
   bool twisty = true;
   ROS_INFO_STREAM(localised_);
+
+  while(1)
+  {}
 
   while (ros::ok())
   {
