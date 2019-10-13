@@ -3,7 +3,10 @@
 #include <cstdlib>
 #include <vector>
 
+#include <opencv2/highgui/highgui.hpp>
+
 #include <opencv2/core.hpp>
+#include <opencv/cv.hpp>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -266,7 +269,37 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // This is the OpenCV image
   cv::Mat& image = image_ptr->image;
+  cv::Mat test_image;
+  cv::cvtColor(image,test_image,CV_BGR2GRAY);
+  cv::SimpleBlobDetector::Params params;
+  params.minThreshold = 10;
+  params.maxThreshold = 200;
+  params.filterByArea = true;
+  params.minArea = 1500;
+  params.filterByCircularity = true;
+  params.minCircularity = 0.1;
 
+  // Filter by Convexity
+  params.filterByConvexity = true;
+  params.minConvexity = 0.87;
+
+  // Filter by Inertia
+  params.filterByInertia = true;
+  params.minInertiaRatio = 0.01;
+
+  // Storage for blobs
+  std::vector<cv::KeyPoint> keypoints;
+  cv::SimpleBlobDetector detector(params);
+
+    // Detect blobs
+  detector.detect(test_image, keypoints);
+  cv::Mat im_with_keypoints;
+  cv::drawKeypoints(im, keypoints, im_with_keypoints, cv::Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+  // Show blobs
+  cv::imshow("keypoints", im_with_keypoints);
+  std::cin.get();
+  
   // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
   // You may want to communicate more information
   // Since the "imageCallback" and "mainLoop" methods can run at the same time you should protect any shared variables
