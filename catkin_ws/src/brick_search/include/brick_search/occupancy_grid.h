@@ -1,7 +1,7 @@
 // An undirected graph
 
-#ifndef ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
-#define ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
+#ifndef brick_search_OCCUPANCY_GRID_H
+#define brick_search_OCCUPANCY_GRID_H
 
 #include <vector>
 #include <utility>
@@ -11,7 +11,7 @@
 
 #include <nav_msgs/OccupancyGrid.h>
 
-namespace astar_path_planner
+namespace brick_search
 {
 struct WorldPosition
 {
@@ -50,6 +50,9 @@ public:
   // Public methods
   bool isOutOfBounds(WorldPosition world_position);
   bool isOccupied(WorldPosition world_position);
+  bool isOccupied(GridPosition grid_position);
+  GridPosition getGridPosition(WorldPosition world_position);
+    WorldPosition getWorldPosition(GridPosition grid_position);  // World position of the centre of the cell
   WorldPosition getWorldPosition(int id);  // World position of the centre of the cell
   Cell getCell(WorldPosition world_position);
   Cell getCell(int id);
@@ -68,14 +71,14 @@ private:
   // Private methods
   bool isOutOfBounds(GridPosition grid_position);
   bool isOccupied(int id);
-  bool isOccupied(GridPosition grid_position);
-  GridPosition getGridPosition(WorldPosition world_position);
+  
+  
   GridPosition getGridPosition(int id);
-  WorldPosition getWorldPosition(GridPosition grid_position);  // World position of the centre of the cell
+
   int getCellId(GridPosition grid_position);
   Cell getCell(GridPosition grid_position);
 };
 
-}  // namespace astar_path_planner
+}  // namespace brick_search
 
-#endif  // ASTAR_PATH_PLANNER_OCCUPANCY_GRID_H
+#endif  // brick_search_OCCUPANCY_GRID_H

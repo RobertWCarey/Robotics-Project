@@ -1,6 +1,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
+#include <vector>
 
 #include <opencv2/core.hpp>
 
@@ -62,6 +63,10 @@ public:
 
 private:
   // Variables
+  std::vector<GridPosition> validGridPos;
+  std::vector<WorldPosition> validWorldPos;  
+  WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
+  OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
   std::atomic<bool> localised_{ false };
@@ -72,12 +77,17 @@ private:
   // Transform listener
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
+  double inflation_radius_ = 0.1;
+  
 
   // Subscribe to the AMCL pose to get covariance
   ros::Subscriber amcl_pose_sub_{};
 
   // Velocity command publisher
   ros::Publisher cmd_vel_pub_{};
+  
+  //Publish inflated map
+  ros::Publisher inflated_map_pub_{};
 
   // Image transport and subscriber
   image_transport::ImageTransport it_;
@@ -95,6 +105,9 @@ private:
 // Constructor
 BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
 {
+  /* initialize random seed: */
+  srand (time(NULL));
+  
   // Wait for "static_map" service to be available
   ROS_INFO("Waiting for \"static_map\" service...");
   ros::service::waitForService("static_map");
@@ -112,21 +125,41 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     map_ = get_map.response.map;
     ROS_INFO("Map received");
   }
-
-  // This allows you to access the map data as an OpenCV image
-  map_image_ = cv::Mat(map_.info.height, map_.info.width, CV_8U, &map_.data.front());
   
-  map_x_min = map_.info.origin.position.x;
-  map_x_max = map_.info.width * map_.info.resolution + map_x_min;
+  occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
+  
+  ROS_INFO("Print dat data bitch");
+  
+  int y = 0;
+  GridPosition currGridPos;
+  WorldPosition currWorldPos;
+  for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
+  {
+    int data = map_.data[i];
+    if (data != -1 && data != 100)
+    {
+      // Store valid Grid Position
+      currGridPos.x = i%map_.info.width;
+      currGridPos.y = i/map_.info.width;
+      validGridPos.push_back(currGridPos);
 
-  map_y_min = map_.info.origin.position.y;
-  map_y_max = map_.info.height * map_.info.resolution + map_y_min;
-  ROS_INFO("map x min, map x max, map y min, map y max");
-  ROS_INFO_STREAM(map_x_min);
-  ROS_INFO_STREAM(map_x_max);
-  ROS_INFO_STREAM(map_y_min);
-  ROS_INFO_STREAM(map_y_max);
+      // Store valid World Pos
+      currWorldPos = occupancy_grid_.getWorldPosition(currGridPos);
+      validWorldPos.push_back(currWorldPos);
+    }
+      
+  }
+        
+  // Print sizes
+  ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
+  ROS_INFO("Number of Valid World Positions %d", validWorldPos.size());
 
+  
+  // Create an occupancy grid from the occupancy grid message
+  occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
+  
+  inflated_map_pub_ = nh.advertise<nav_msgs::OccupancyGrid>("map_inflated", 1, true);
+  inflated_map_pub_.publish(occupancy_grid_.getOccupancyGridMsg());
 
   // Wait for the transform to be become available
   ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
@@ -135,7 +168,6 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     ros::Duration(0.1).sleep();
   }
   ROS_INFO("Transform available");
-
   // Subscribe to "amcl_pose" to get pose covariance
   amcl_pose_sub_ = nh.subscribe("amcl_pose", 1, &BrickSearch::amclPoseCallback, this);
 
@@ -144,6 +176,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
 
   // Advertise "cmd_vel" publisher to control TurtleBot manually
   cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1, false);
+
 
   // Action client for "move_base"
   ROS_INFO("Waiting for \"move_base\" action...");
@@ -154,6 +187,23 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
+  std::cin.get();
+}
+
+WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPositions)
+{
+  int numPos = worldPositions.size();
+  WorldPosition randWorldPos;
+
+  // generate random number between o and numPos-1
+  int randArrPos = rand() % numPos;
+
+  randWorldPos = worldPositions[randArrPos];
+
+  ROS_INFO("X Pos %f", randWorldPos.x);
+  ROS_INFO("Y Pos %f", randWorldPos.y);
+
+  return randWorldPos;
 }
 
 geometry_msgs::Pose2D BrickSearch::getPose2d()
@@ -230,6 +280,9 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 void BrickSearch::mainLoop()
 {
   // Wait for the TurtleBot to localise
+  ROS_INFO("PASE waiting for input");
+  std::cin.get();
+
   ROS_INFO("Localising...");
   bool twisty = true;
   ROS_INFO_STREAM(localised_);
@@ -296,28 +349,25 @@ void BrickSearch::mainLoop()
   // Here's an example of getting the current pose and sending a goal to "move_base":
   geometry_msgs::Pose2D pose_2d = getPose2d();
 
-  ROS_INFO_STREAM("Current pose: " << pose_2d);
+  // ROS_INFO_STREAM("Current pose: " << pose_2d);
 
   // Move forward 0.5 m
-  pose_2d.x += 1. * std::cos(pose_2d.theta);
-  pose_2d.y += 1. * std::sin(pose_2d.theta);
+  // pose_2d.x += 1. * std::cos(pose_2d.theta);
+  // pose_2d.y += 1. * std::sin(pose_2d.theta);
 
-  ROS_INFO_STREAM("Target pose: " << pose_2d);
+  // ROS_INFO_STREAM("Target pose: " << pose_2d);
 
   // Send a goal to "move_base" with "move_base_action_client_"
   move_base_msgs::MoveBaseActionGoal action_goal{};
 
   action_goal.goal.target_pose.header.frame_id = "map";
-  action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+  // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
-  ROS_INFO("Sending goal...");
-  move_base_action_client_.sendGoal(action_goal.goal);
+  // ROS_INFO("Sending goal...");
+  // move_base_action_client_.sendGoal(action_goal.goal);
 
 
-  /* initialize random seed: */
-  srand (time(NULL));
   
-  double randomX, randomY;
 
 
   // This loop repeats until ROS shuts down, you probably want to put all your code in here
@@ -341,25 +391,44 @@ void BrickSearch::mainLoop()
 
       ROS_INFO_STREAM("Current pose: " << pose_2d);
 
-      /* generate secret number between 1 and 10: */
-      randomX = (rand() % 20)/map_x_max;
-      randomY = (rand() % 20)/map_y_max;
-      // Move forward 0.5 m
-      pose_2d.x += randomX * std::cos(pose_2d.theta);
-      pose_2d.y += randomY * std::sin(pose_2d.theta);
+      // Generate Random Goal
+      WorldPosition worldPos = findRandGoal(validWorldPos);
+
+      // Update pose with random valid goal
+      pose_2d.x = worldPos.x;
+      pose_2d.y = worldPos.y;
+
       ROS_INFO_STREAM("Target pose: " << pose_2d);
 
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
       ROS_INFO("Sending goal...");
       move_base_action_client_.sendGoal(action_goal.goal);
-
-      // Shutdown when done
-      // ros::shutdown();
     }
     else
     {
       ROS_INFO("Error");
+
+      pose_2d = getPose2d();
+
+      // Print the state of the goal
+      ROS_INFO_STREAM(state.getText());
+
+      ROS_INFO_STREAM("Current pose: " << pose_2d);
+
+      // Generate Random Goal
+      WorldPosition worldPos = findRandGoal(validWorldPos);
+
+      // Update pose with random valid goal
+      pose_2d.x = worldPos.x;
+      pose_2d.y = worldPos.y;
+
+      ROS_INFO_STREAM("Target pose: " << pose_2d);
+
+      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+      ROS_INFO("Sending goal...");
+      move_base_action_client_.sendGoal(action_goal.goal);
     }
     
 
