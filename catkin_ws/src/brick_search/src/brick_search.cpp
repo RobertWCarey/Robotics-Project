@@ -271,36 +271,34 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   cv::Mat& image = image_ptr->image;
   cv::Mat hsvImage;
   // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
-  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
-  cv::imshow( "Standard Image", image );
-  cv::waitKey(0); 
-  // cv::imshow("inputImage",image);
-  // imshow(fuckyacunt,hsvImage);
+  // cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  // cv::imshow( "Standard Image", image );
+  // cv::waitKey(0); 
 
   // ROS_INFO(image);
-  ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
+  // ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
   cv::Scalar upperRed = cv::Scalar(1,1,255);
   cv::Scalar lowerRed = cv::Scalar(0,0,100);
 
   cv::Mat redImage;
 
   cv::inRange(image,lowerRed,upperRed,redImage);
-  cv::namedWindow( "Red Image", 0 );
-  cv::imshow("Red Image",redImage);
-  cv::waitKey(0);
+  // cv::namedWindow( "Red Image", 0 );
+  // cv::imshow("Red Image",redImage);
+  // cv::waitKey(0);
 
-  ROS_INFO("Red Image");
-  ROS_INFO_STREAM(redImage.at<cv::Vec3b>(5,5));
+  // Mask of image with only red pixels
   std::cin.get();
   cv::Size s = redImage.size();
-  ROS_INFO_STREAM("RedImage Y" << s.height);
-  ROS_INFO_STREAM("RedImage X" << s.width);
+  ROS_INFO_STREAM("RedImage Y: " << s.height);
+  ROS_INFO_STREAM("RedImage X: " << s.width);
+  double redImagePix = s.height*s.width;
 
   int32_t count = 0;
   cv::Vec3b tempVec;
   tempVec = redImage.at<cv::Vec3b>(1000,990);
 
-  ROS_INFO_STREAM("Image" << tempVec);
+  // ROS_INFO_STREAM("Image" << tempVec);
 
   for (int y =0; y< s.height; y++)
   {
@@ -322,7 +320,14 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
     }
   }
 
-  ROS_INFO_STREAM("Final Count " << count);
+  ROS_INFO_STREAM("Final Count: " << count);
+  ROS_INFO_STREAM("% Red Pixels: " << count/redImagePix);
+  if (count/redImagePix > 0.2)
+  {
+    brick_found_ = true;
+  }
+
+  ROS_INFO_STREAM("Number of Pixels: " << redImage.size());
   cv::waitKey(0);
   // for (auto val : image)
   // {
