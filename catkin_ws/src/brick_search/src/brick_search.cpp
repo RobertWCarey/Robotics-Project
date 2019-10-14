@@ -190,7 +190,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
-  std::cin.get();
+  // std::cin.get();
 }
 
 WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPositions)
@@ -288,21 +288,21 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // cv::waitKey(0);
 
   // Mask of image with only red pixels
-  std::cin.get();
+  // std::cin.get();
   cv::Size s = redImage.size();
   ROS_INFO_STREAM("RedImage Y: " << s.height);
   ROS_INFO_STREAM("RedImage X: " << s.width);
-  double redImagePix = s.height*s.width;
+  int32_t redImagePix = s.height*s.width;
 
   int32_t count = 0;
-  cv::Vec3b tempVec;
-  tempVec = redImage.at<cv::Vec3b>(1000,990);
+  ROS_INFO_STREAM("Jake u lazy bastard");
 
   // ROS_INFO_STREAM("Image" << tempVec);
+  cv::Vec3b tempVec;
 
-  for (int y =0; y< s.height; y++)
+  for (int y =0; y< s.height-1; y++)
   {
-    for (int x = 0 ; x< s.width; x++)
+    for (int x = 0 ; x< s.width-1; x++)
     {
       // ROS_INFO_STREAM("CurrentCount" << count);
       // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
@@ -321,14 +321,16 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   }
 
   ROS_INFO_STREAM("Final Count: " << count);
-  ROS_INFO_STREAM("% Red Pixels: " << count/redImagePix);
-  if (count/redImagePix > 0.2)
+  ROS_INFO_STREAM("% Red Pixels: " << count/(double)redImagePix);
+  if (count/(double)redImagePix > 0.2)
   {
     brick_found_ = true;
+    ROS_INFO_STREAM("Brick Found");
+    
   }
 
   ROS_INFO_STREAM("Number of Pixels: " << redImage.size());
-  cv::waitKey(0);
+  // cv::waitKey(0);
   // for (auto val : image)
   // {
   //   ROS_INFO_STREAM(val)
@@ -347,15 +349,12 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 void BrickSearch::mainLoop()
 {
   // Wait for the TurtleBot to localise
-  ROS_INFO("PASE waiting for input");
-  std::cin.get();
+  // ROS_INFO("PASE waiting for input");
+  // std::cin.get();
 
   ROS_INFO("Localising...");
   bool twisty = true;
   ROS_INFO_STREAM(localised_);
-
-  while(1)
-  {}
 
   while (ros::ok())
   {
@@ -411,6 +410,10 @@ void BrickSearch::mainLoop()
   geometry_msgs::Twist twist{};
   twist.angular.z = 0.;
   cmd_vel_pub_.publish(twist);
+
+  // Cancel goal
+  move_base_action_client_.cancelAllGoals();
+
 
   // The map is stored in "map_"
   // You will probably need the data stored in "map_.info"
