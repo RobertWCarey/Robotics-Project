@@ -80,7 +80,7 @@ private:
   // Transform listener
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
-  double inflation_radius_ = 0.1;
+  double inflation_radius_ = 2.1;
   
 
   // Subscribe to the AMCL pose to get covariance
@@ -348,27 +348,28 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
 void BrickSearch::mainLoop()
 {
-  // Wait for the TurtleBot to localise
-  // ROS_INFO("PASE waiting for input");
-  // std::cin.get();
-
   ROS_INFO("Localising...");
+  // Variable to control localise method
   bool twisty = true;
-  ROS_INFO_STREAM(localised_);
+
+  move_base_msgs::MoveBaseActionGoal action_goal{};
+  action_goal.goal.target_pose.header.frame_id = "map";
 
   while (ros::ok())
   {
     geometry_msgs::Pose2D localpose = getPose2d();
-    geometry_msgs::Twist twist{};
     
-    move_base_msgs::MoveBaseActionGoal local_goal{};
-    local_goal.goal.target_pose.header.frame_id = "map";
+    static geometry_msgs::Twist twist{};
+    
+
     if(twisty)
     {
       ros::Time time = ros::Time::now();
       ros::Time newtime;
       ros::Duration d = ros::Duration(6, 0);
-      ROS_INFO("Spinning bitch");
+      ROS_INFO("Spin to Localise");
+      
+      // Remain in loop spinning until duration elasped
       while (ros::ok())
       {
         if ((newtime - time) > d)
@@ -380,22 +381,27 @@ void BrickSearch::mainLoop()
         twist.angular.z = 1.;
         cmd_vel_pub_.publish(twist);
       }
-      ROS_INFO("Exit Spinning bitch");
     }
     else
     {
-      ROS_INFO("Gonna move to a goal cunt");
+      ROS_INFO("Move to a Goal to localise");
+
+      // Stop spinning
       twist.angular.z = 0.;
       cmd_vel_pub_.publish(twist);
+
+      // Send move goal to 0.5 m infront of current posistion
       localpose.x += 0.5 * std::cos(localpose.theta);
       localpose.y += 0.5 * std::sin(localpose.theta);      
-      local_goal.goal.target_pose.pose = pose2dToPose(localpose);
-      ros::Duration dExecute = ros::Duration(5, 0);
-      ros::Duration dPreempt = ros::Duration(5, 0);
-      actionlib::SimpleClientGoalState state = move_base_action_client_.sendGoalAndWait(local_goal.goal, dExecute, dPreempt);
+      action_goal.goal.target_pose.pose = pose2dToPose(localpose);
+
+      // time out after 10sec total with preempt and execute
+      ros::Duration timeoutDur = ros::Duration(5, 0);
+      // only exits after timeout or success
+      actionlib::SimpleClientGoalState state = move_base_action_client_.sendGoalAndWait(action_goal.goal, timeoutDur, timeoutDur);
       ROS_INFO_STREAM(state.getText());
     }
-    //ros::shutdown();
+    // toggle localise method
     twisty = !twisty;
     if (localised_)
     {
@@ -411,7 +417,7 @@ void BrickSearch::mainLoop()
   twist.angular.z = 0.;
   cmd_vel_pub_.publish(twist);
 
-  // Cancel goal
+  // Cancel all goals
   move_base_action_client_.cancelAllGoals();
 
 
@@ -431,9 +437,9 @@ void BrickSearch::mainLoop()
   // ROS_INFO_STREAM("Target pose: " << pose_2d);
 
   // Send a goal to "move_base" with "move_base_action_client_"
-  move_base_msgs::MoveBaseActionGoal action_goal{};
+  // move_base_msgs::MoveBaseActionGoal action_goal{};
 
-  action_goal.goal.target_pose.header.frame_id = "map";
+  // action_goal.goal.target_pose.header.frame_id = "map";
   // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
   // ROS_INFO("Sending goal...");
