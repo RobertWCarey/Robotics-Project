@@ -134,6 +134,19 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   map_image_ = cv::Mat(map_.info.height,map_.info.width,CV_8U,&map_.data.front());
   cv::namedWindow( "Map", 0 );// Create a window for display.
   cv::imshow( "Map", map_image_ );
+  // cv::waitKey(0);
+
+  cv::Mat imageDilate , imageErosion;
+
+  cv::dilate(map_image_,imageDilate,cv::Mat());
+  cv::erode(map_image_,imageErosion,cv::Mat());
+
+  cv::namedWindow( "Dilate", 0 );// Create a window for display.
+  cv::imshow( "Dilate", imageDilate );
+
+  cv::namedWindow( "Erode", 0 );// Create a window for display.
+  cv::imshow( "Erode", imageErosion );
+
   cv::waitKey(0);
 
   occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
