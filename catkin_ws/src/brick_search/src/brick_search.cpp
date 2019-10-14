@@ -254,7 +254,7 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // Use this method to identify when the brick is visible
 
   // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
-  if (image_msg_count_ < 15)
+  if (image_msg_count_ < 5)
   {
     image_msg_count_++;
     return;
@@ -269,7 +269,7 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // This is the OpenCV image
   cv::Mat& image = image_ptr->image;
-  cv::Mat hsvImage;
+  // cv::Mat hsvImage;
   // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
   // cv::namedWindow( "Standard Image", 0 );// Create a window for display.
   // cv::imshow( "Standard Image", image );
@@ -277,10 +277,10 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // ROS_INFO(image);
   // ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
-  cv::Scalar upperRed = cv::Scalar(1,1,255);
-  cv::Scalar lowerRed = cv::Scalar(0,0,100);
+  static cv::Scalar upperRed = cv::Scalar(1,1,255);
+  static cv::Scalar lowerRed = cv::Scalar(0,0,100);
 
-  cv::Mat redImage;
+  static cv::Mat redImage;
 
   cv::inRange(image,lowerRed,upperRed,redImage);
   // cv::namedWindow( "Red Image", 0 );
@@ -289,20 +289,19 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // Mask of image with only red pixels
   // std::cin.get();
-  cv::Size s = redImage.size();
+  static cv::Size s = redImage.size();
   ROS_INFO_STREAM("RedImage Y: " << s.height);
   ROS_INFO_STREAM("RedImage X: " << s.width);
-  int32_t redImagePix = s.height*s.width;
+  static int32_t redImagePix = s.height*s.width;
 
   int32_t count = 0;
-  ROS_INFO_STREAM("Jake u lazy bastard");
 
   // ROS_INFO_STREAM("Image" << tempVec);
-  cv::Vec3b tempVec;
+  static cv::Vec3b tempVec;
 
-  for (int y =0; y< s.height-1; y++)
+  for (int32_t y =1; y< s.height; y++)
   {
-    for (int x = 0 ; x< s.width-1; x++)
+    for (int32_t x = 1 ; x< s.width; x++)
     {
       // ROS_INFO_STREAM("CurrentCount" << count);
       // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
@@ -313,8 +312,9 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
       // ROS_INFO_STREAM("Value of vector: " << tempVec);
       // ROS_INFO_STREAM(" ");
       
-      if (tempVec.val[0] == 255)
+      if (tempVec.val[1] > 1)
       {
+        // ROS_INFO_STREAM("Value of vector: " << tempVec);
           count ++;        
       }
     }
@@ -367,7 +367,7 @@ void BrickSearch::mainLoop()
     {
       ros::Time time = ros::Time::now();
       ros::Time newtime;
-      ros::Duration d = ros::Duration(2, 0);
+      ros::Duration d = ros::Duration(6, 0);
       ROS_INFO("Spinning bitch");
       while (ros::ok())
       {
