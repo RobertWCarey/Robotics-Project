@@ -302,28 +302,28 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   ROS_INFO_STREAM("Image" << tempVec);
 
-  for (int x =0; x< s.width; x++)
+  for (int y =0; y< s.height; y++)
   {
-    for (int y = 0 ; y< s.height; y++)
+    for (int x = 0 ; x< s.width; x++)
     {
       // ROS_INFO_STREAM("CurrentCount" << count);
       // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
       tempVec = redImage.at<cv::Vec3b>(y,x);
-      for (int i = 0 ; i < 3; i++)
+      
+      // ROS_INFO_STREAM("Y: "<<y);
+      // ROS_INFO_STREAM("X: "<<x);
+      // ROS_INFO_STREAM("Value of vector: " << tempVec);
+      // ROS_INFO_STREAM(" ");
+      
+      if (tempVec.val[0] == 255)
       {
-        if (tempVec.val[i] > 0)
-        {
-          count ++;
-          ROS_INFO_STREAM("i"<<i);
-          ROS_INFO_STREAM("Value of vector item i" << tempVec);
-          ROS_INFO_STREAM("Y"<<y);
-          ROS_INFO_STREAM("X"<<x);
-        }
+          count ++;        
       }
     }
   }
 
   ROS_INFO_STREAM("Final Count " << count);
+  cv::waitKey(0);
   // for (auto val : image)
   // {
   //   ROS_INFO_STREAM(val)
