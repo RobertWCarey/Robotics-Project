@@ -5,6 +5,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui.hpp>
 #include <opencv/cv.hpp>
 
 #include <ros/ros.h>
@@ -270,7 +271,10 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   cv::Mat& image = image_ptr->image;
   cv::Mat hsvImage;
   // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
-  cv::imshow("inputImage",image);
+  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  cv::imshow( "Standard Image", image );
+  cv::waitKey(0); 
+  // cv::imshow("inputImage",image);
   // imshow(fuckyacunt,hsvImage);
 
   // ROS_INFO(image);
@@ -281,7 +285,10 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   cv::Mat redImage;
 
   cv::inRange(image,lowerRed,upperRed,redImage);
-  cv::imshow("awfulredcunt",redImage);
+  cv::namedWindow( "Red Image", 0 );
+  cv::imshow("Red Image",redImage);
+  cv::waitKey(0);
+
   ROS_INFO("Red Image");
   ROS_INFO_STREAM(redImage.at<cv::Vec3b>(5,5));
   std::cin.get();
