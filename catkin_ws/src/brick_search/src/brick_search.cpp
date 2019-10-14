@@ -69,6 +69,7 @@ private:
   std::vector<GridPosition> validGridPos;
   std::vector<WorldPosition> validWorldPos;  
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
+  void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
@@ -80,7 +81,7 @@ private:
   // Transform listener
   tf2_ros::Buffer transform_buffer_{};
   tf2_ros::TransformListener transform_listener_{ transform_buffer_ };
-  double inflation_radius_ = 2.1;
+  double inflation_radius_ = 0.1;
   
 
   // Subscribe to the AMCL pose to get covariance
@@ -346,6 +347,25 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   ROS_INFO_STREAM("brick_found_: " << brick_found_);
 }
 
+void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal)
+{
+    ROS_INFO_STREAM("Current pose: " << pose2d);
+
+  // Generate Random Goal
+  WorldPosition worldPos = findRandGoal(validWorldPos);
+
+  // Update pose with random valid goal
+  pose2d.x = worldPos.x;
+  pose2d.y = worldPos.y;
+
+  ROS_INFO_STREAM("Target pose: " << pose2d);
+
+  actionGoal.goal.target_pose.pose = pose2dToPose(pose2d);
+
+  ROS_INFO("Sending goal...");
+  move_base_action_client_.sendGoal(actionGoal.goal);
+}
+
 void BrickSearch::mainLoop()
 {
   ROS_INFO("Localising...");
@@ -354,10 +374,11 @@ void BrickSearch::mainLoop()
 
   move_base_msgs::MoveBaseActionGoal action_goal{};
   action_goal.goal.target_pose.header.frame_id = "map";
+  geometry_msgs::Pose2D pose_2d = getPose2d();
 
   while (ros::ok())
   {
-    geometry_msgs::Pose2D localpose = getPose2d();
+    
     
     static geometry_msgs::Twist twist{};
     
@@ -391,9 +412,9 @@ void BrickSearch::mainLoop()
       cmd_vel_pub_.publish(twist);
 
       // Send move goal to 0.5 m infront of current posistion
-      localpose.x += 0.5 * std::cos(localpose.theta);
-      localpose.y += 0.5 * std::sin(localpose.theta);      
-      action_goal.goal.target_pose.pose = pose2dToPose(localpose);
+      pose_2d.x += 0.5 * std::cos(pose_2d.theta);
+      pose_2d.y += 0.5 * std::sin(pose_2d.theta);      
+      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
       // time out after 10sec total with preempt and execute
       ros::Duration timeoutDur = ros::Duration(5, 0);
@@ -426,7 +447,7 @@ void BrickSearch::mainLoop()
   // You can also access the map data as an OpenCV image with "map_image_"
 
   // Here's an example of getting the current pose and sending a goal to "move_base":
-  geometry_msgs::Pose2D pose_2d = getPose2d();
+  pose_2d = getPose2d();
 
   // ROS_INFO_STREAM("Current pose: " << pose_2d);
 
@@ -463,51 +484,13 @@ void BrickSearch::mainLoop()
     }
     else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
     {
-      pose_2d = getPose2d();
-      
-      // Print the state of the goal
-      ROS_INFO_STREAM(state.getText());
-
-      ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-      // Generate Random Goal
-      WorldPosition worldPos = findRandGoal(validWorldPos);
-
-      // Update pose with random valid goal
-      pose_2d.x = worldPos.x;
-      pose_2d.y = worldPos.y;
-
-      ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-      ROS_INFO("Sending goal...");
-      move_base_action_client_.sendGoal(action_goal.goal);
+      sendRandGoal(getPose2d(), action_goal);
     }
     else
     {
       ROS_INFO("Error");
 
-      pose_2d = getPose2d();
-
-      // Print the state of the goal
-      ROS_INFO_STREAM(state.getText());
-
-      ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-      // Generate Random Goal
-      WorldPosition worldPos = findRandGoal(validWorldPos);
-
-      // Update pose with random valid goal
-      pose_2d.x = worldPos.x;
-      pose_2d.y = worldPos.y;
-
-      ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-      ROS_INFO("Sending goal...");
-      move_base_action_client_.sendGoal(action_goal.goal);
+      sendRandGoal(getPose2d(), action_goal);
     }
     
 
