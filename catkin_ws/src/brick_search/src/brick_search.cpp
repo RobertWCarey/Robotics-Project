@@ -130,6 +130,12 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
     ROS_INFO("Map received");
   }
   
+  // load openCV image of map
+  map_image_ = cv::Mat(map_.info.height,map_.info.width,CV_8U,&map_.data.front());
+  cv::namedWindow( "Map", 0 );// Create a window for display.
+  cv::imshow( "Map", map_image_ );
+  cv::waitKey(0);
+
   occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
   
   ROS_INFO("Print dat data bitch");
