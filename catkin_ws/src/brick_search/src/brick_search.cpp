@@ -80,6 +80,7 @@ private:
   std::atomic<bool> brick_found_{ false };
   bool findBrick(const cv::Mat image);
   bool moveToBrick(const cv::Mat image);
+  double getPixPercent(const cv::Mat image);
   int image_msg_count_ = 0;
   //Initialise map limit variables
   double map_x_min = 0., map_x_max = 0., map_y_min = 0., map_y_max = 0.;
@@ -254,46 +255,43 @@ void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStampe
   }
 }
 
-bool BrickSearch::findBrick(const cv::Mat image)
+double BrickSearch::getPixPercent(const cv::Mat image)
 {
-  static cv::Size s = image.size();
-  const double redPixThres = 0.1;
-  ROS_INFO_STREAM("Locate Brick");
-
-  // ROS_INFO_STREAM("RedImage Y: " << s.height);
-  // ROS_INFO_STREAM("RedImage X: " << s.width);
-  static int32_t imagePix = s.height*s.width;
-
-  int32_t count = 0;
-
-  // ROS_INFO_STREAM("Image" << tempVec);
+  cv::Size imageSize = image.size();
+  int32_t whitePixCnt = 0;
   static cv::Vec3b tempVec;
+  double whitePixPerc = 0.;
 
-  for (int32_t y =1; y< s.height; y++)
+  int32_t imagePix = imageSize.height*imageSize.width;
+  
+  for (int16_t y =1; y < imageSize.height; y++)
   {
-    for (int32_t x = 1 ; x< s.width; x++)
+    for (int32_t x = 1 ; x < imageSize.width; x++)
     {
-      // ROS_INFO_STREAM("CurrentCount" << count);
-      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
       tempVec = image.at<cv::Vec3b>(y,x);
-      
-      // ROS_INFO_STREAM("Y: "<<y);
-      // ROS_INFO_STREAM("X: "<<x);
-      // ROS_INFO_STREAM("Value of vector: " << tempVec);
-      // ROS_INFO_STREAM(" ");
-      
+            
       if (tempVec.val[1] > 1)
       {
-        // ROS_INFO_STREAM("Value of vector: " << tempVec);
-          count ++;        
+        whitePixCnt ++;        
       }
     }
   }
 
-  // ROS_INFO_STREAM("Final Count: " << count);
-  ROS_INFO_STREAM("% Red Pixels: " << count/(double)imagePix);
+  whitePixPerc = whitePixCnt/(double)imagePix;
 
-  if (count/(double)imagePix > redPixThres)
+  ROS_INFO_STREAM("% White Pixels: " << whitePixPerc);
+  return whitePixPerc;
+}
+
+bool BrickSearch::findBrick(const cv::Mat image)
+{
+  const double redPixThres = 0.1;
+  double redPixPerc = 0;
+  ROS_INFO_STREAM("Locate Brick");
+
+  redPixPerc = getPixPercent(image);
+
+  if (redPixPerc > redPixThres)
   {
     return true;
   }
@@ -304,19 +302,22 @@ bool BrickSearch::findBrick(const cv::Mat image)
 bool BrickSearch::moveToBrick(const cv::Mat image)
 {
   ROS_INFO_STREAM("Move To Brick");
+  static int16_t segWidth = 640;
+  static int16_t segHeight = 1080;
+
   // cv::Mat image_Left, image_Mid, image_Right;
 
   // image.colRange(0,639).copyTo(image_Left.colRange(0,639));
   // cv::Mat image_Left = image(cv::Rect(640,1080,1920,1080));
-  cv::Mat image_Left = image(cv::Range(0,640),cv::Range(0 ,1080));
-  cv::Mat image_Left2 = image(cv::Range(0,1080),cv::Range(0 ,640));
+  cv::Mat image_Left = image(cv::Range(0,segHeight-1),cv::Range(0 ,segWidth-1));
+  cv::Mat image_Mid = image(cv::Range(0,segHeight-1),cv::Range(segWidth ,(segWidth*2)-1));
+  cv::Mat image_Right = image(cv::Range(0,segHeight-1),cv::Range((segWidth*2) ,(segWidth*3)-1));
 
-  ROS_INFO_STREAM(image_Left.size());
-  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
-  cv::imshow( "Standard Image", image_Left );
-  cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
-  cv::imshow( "Standard Image2", image_Left2);
-  cv::waitKey(0);
+
+  ROS_INFO_STREAM("Image Left %" << getPixPercent(image_Left));
+  // ROS_INFO_STREAM(image_Mid.size());
+  // ROS_INFO_STREAM(image_Right.size());
+  
 
   return false;
 }
