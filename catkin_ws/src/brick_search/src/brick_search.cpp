@@ -2,8 +2,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
-
+#include <limits>
 #include <opencv2/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv/cv.hpp>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -64,8 +67,12 @@ public:
 private:
   // Variables
   std::vector<GridPosition> validGridPos;
-  std::vector<WorldPosition> validWorldPos;  
+  std::vector<WorldPosition> validWorldPos;
+  std::vector<WorldPosition> NEquad, NWquad, SEquad, SWquad;
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
+  void divideValidPos(const std::vector<WorldPosition> worldPositions);
+  int quadNum = 0;
+  void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
@@ -153,7 +160,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   // Print sizes
   ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
   ROS_INFO("Number of Valid World Positions %d", validWorldPos.size());
-
+  divideValidPos(validWorldPos);
   
   // Create an occupancy grid from the occupancy grid message
   occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
@@ -187,7 +194,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
-  std::cin.get();
+  // std::cin.get();
 }
 
 WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPositions)
@@ -202,7 +209,6 @@ WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPo
 
   ROS_INFO("X Pos %f", randWorldPos.x);
   ROS_INFO("Y Pos %f", randWorldPos.y);
-
   return randWorldPos;
 }
 
@@ -251,7 +257,7 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // Use this method to identify when the brick is visible
 
   // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
-  if (image_msg_count_ < 15)
+  if (image_msg_count_ < 5)
   {
     image_msg_count_++;
     return;
@@ -262,10 +268,76 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   }
 
   // Copy the image message to a cv_bridge image pointer
-  cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr);
+  cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(image_msg_ptr,"bgr8");
 
   // This is the OpenCV image
   cv::Mat& image = image_ptr->image;
+  // cv::Mat hsvImage;
+  // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
+  // cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  // cv::imshow( "Standard Image", image );
+  // cv::waitKey(0); 
+
+  // ROS_INFO(image);
+  // ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
+  static cv::Scalar upperRed = cv::Scalar(1,1,255);
+  static cv::Scalar lowerRed = cv::Scalar(0,0,100);
+
+  static cv::Mat redImage;
+
+  cv::inRange(image,lowerRed,upperRed,redImage);
+  // cv::namedWindow( "Red Image", 0 );
+  // cv::imshow("Red Image",redImage);
+  // cv::waitKey(0);
+
+  // Mask of image with only red pixels
+  // std::cin.get();
+  static cv::Size s = redImage.size();
+  ROS_INFO_STREAM("RedImage Y: " << s.height);
+  ROS_INFO_STREAM("RedImage X: " << s.width);
+  static int32_t redImagePix = s.height*s.width;
+
+  int32_t count = 0;
+
+  // ROS_INFO_STREAM("Image" << tempVec);
+  static cv::Vec3b tempVec;
+
+  for (int32_t y =1; y< s.height; y++)
+  {
+    for (int32_t x = 1 ; x< s.width; x++)
+    {
+      // ROS_INFO_STREAM("CurrentCount" << count);
+      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
+      tempVec = redImage.at<cv::Vec3b>(y,x);
+      
+      // ROS_INFO_STREAM("Y: "<<y);
+      // ROS_INFO_STREAM("X: "<<x);
+      // ROS_INFO_STREAM("Value of vector: " << tempVec);
+      // ROS_INFO_STREAM(" ");
+      
+      if (tempVec.val[1] > 1)
+      {
+        // ROS_INFO_STREAM("Value of vector: " << tempVec);
+          count ++;        
+      }
+    }
+  }
+
+  ROS_INFO_STREAM("Final Count: " << count);
+  ROS_INFO_STREAM("% Red Pixels: " << count/(double)redImagePix);
+  if (count/(double)redImagePix > 0.2)
+  {
+    brick_found_ = true;
+    ROS_INFO_STREAM("Brick Found");
+    
+  }
+
+  ROS_INFO_STREAM("Number of Pixels: " << redImage.size());
+  // cv::waitKey(0);
+  // for (auto val : image)
+  // {
+  //   ROS_INFO_STREAM(val)
+  // }
 
   // You can set "brick_found_" to true to signal to "mainLoop" that you have found a brick
   // You may want to communicate more information
@@ -277,29 +349,133 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   ROS_INFO_STREAM("brick_found_: " << brick_found_);
 }
 
+void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal)
+{
+  WorldPosition worldPos;
+    ROS_INFO_STREAM("Current pose: " << pose2d);
+  if (quadNum == 0)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(NEquad);
+    ROS_INFO_STREAM("Selected from NE quad");
+    quadNum++;
+  }
+  else if (quadNum == 1)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(SEquad);
+    ROS_INFO_STREAM("Selected from SE quad");
+    quadNum++;
+  }
+  else if (quadNum == 2)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(SWquad);
+    ROS_INFO_STREAM("Selected from SW quad");
+    quadNum++;
+  }
+  else
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(NWquad);
+    ROS_INFO_STREAM("Selected from NW quad");
+    quadNum = 0;
+  }
+
+  // Update pose with random valid goal
+  pose2d.x = worldPos.x;
+  pose2d.y = worldPos.y;
+
+  ROS_INFO_STREAM("Target pose: " << pose2d);
+
+  actionGoal.goal.target_pose.pose = pose2dToPose(pose2d);
+
+  ROS_INFO("Sending goal...");
+  move_base_action_client_.sendGoal(actionGoal.goal);
+}
+
+void BrickSearch::divideValidPos(const std::vector<WorldPosition> worldPositions)
+{
+  WorldPosition maxPos, minPos, avePos;
+  // Initialise max and min positions
+  maxPos.x = 0.;
+  maxPos.y = 0.;
+  minPos.x = std::numeric_limits<double>::max();
+  minPos.y = std::numeric_limits<double>::max();
+  
+  // Get max and min positions from valid positions
+  for (auto pos : worldPositions)
+  {
+    if (pos.x > maxPos.x)
+    {
+      maxPos.x = pos.x;
+    }
+    if (pos.y > maxPos.y)
+    {
+      maxPos.y = pos.y;
+    }
+    if (pos.x < minPos.x)
+    {
+      minPos.x = pos.x;
+    }
+    if (pos.y < minPos.y)
+    {
+      minPos.y = pos.y;
+    }
+  }
+  // Calculate average x and y positions
+  avePos.x = (minPos.x + maxPos.x) / 2.;
+  avePos.y = (minPos.y + maxPos.y) / 2.;
+
+
+  for (auto pos : worldPositions)
+  {
+    if (pos.x >= avePos.x && pos.y >= avePos.y)
+    {
+      NEquad.push_back(pos);
+    }
+    else if (pos.x > avePos.x && pos.y < avePos.y)
+    {
+      SEquad.push_back(pos);
+    }
+    else if (pos.x <= avePos.x && pos.y <= avePos.y)
+    {
+      SWquad.push_back(pos);
+    }
+    else
+    {
+      NWquad.push_back(pos);
+    }
+    
+  }
+
+}
+
 void BrickSearch::mainLoop()
 {
-  // Wait for the TurtleBot to localise
-  ROS_INFO("PASE waiting for input");
-  std::cin.get();
-
   ROS_INFO("Localising...");
+  // Variable to control localise method
   bool twisty = true;
-  ROS_INFO_STREAM(localised_);
+
+  move_base_msgs::MoveBaseActionGoal action_goal{};
+  action_goal.goal.target_pose.header.frame_id = "map";
+  geometry_msgs::Pose2D pose_2d = getPose2d();
 
   while (ros::ok())
   {
-    geometry_msgs::Pose2D localpose = getPose2d();
-    geometry_msgs::Twist twist{};
     
-    move_base_msgs::MoveBaseActionGoal local_goal{};
-    local_goal.goal.target_pose.header.frame_id = "map";
+    
+    static geometry_msgs::Twist twist{};
+    
+
     if(twisty)
     {
       ros::Time time = ros::Time::now();
       ros::Time newtime;
-      ros::Duration d = ros::Duration(2, 0);
-      ROS_INFO("Spinning bitch");
+      ros::Duration d = ros::Duration(6, 0);
+      ROS_INFO("Spin to Localise");
+      
+      // Remain in loop spinning until duration elasped
       while (ros::ok())
       {
         if ((newtime - time) > d)
@@ -311,22 +487,27 @@ void BrickSearch::mainLoop()
         twist.angular.z = 1.;
         cmd_vel_pub_.publish(twist);
       }
-      ROS_INFO("Exit Spinning bitch");
     }
     else
     {
-      ROS_INFO("Gonna move to a goal cunt");
+      ROS_INFO("Move to a Goal to localise");
+
+      // Stop spinning
       twist.angular.z = 0.;
       cmd_vel_pub_.publish(twist);
-      localpose.x += 0.5 * std::cos(localpose.theta);
-      localpose.y += 0.5 * std::sin(localpose.theta);      
-      local_goal.goal.target_pose.pose = pose2dToPose(localpose);
-      ros::Duration dExecute = ros::Duration(5, 0);
-      ros::Duration dPreempt = ros::Duration(5, 0);
-      actionlib::SimpleClientGoalState state = move_base_action_client_.sendGoalAndWait(local_goal.goal, dExecute, dPreempt);
+
+      // Send move goal to 0.5 m infront of current posistion
+      pose_2d.x += 0.5 * std::cos(pose_2d.theta);
+      pose_2d.y += 0.5 * std::sin(pose_2d.theta);      
+      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
+
+      // time out after 10sec total with preempt and execute
+      ros::Duration timeoutDur = ros::Duration(5, 0);
+      // only exits after timeout or success
+      actionlib::SimpleClientGoalState state = move_base_action_client_.sendGoalAndWait(action_goal.goal, timeoutDur, timeoutDur);
       ROS_INFO_STREAM(state.getText());
     }
-    //ros::shutdown();
+    // toggle localise method
     twisty = !twisty;
     if (localised_)
     {
@@ -342,12 +523,16 @@ void BrickSearch::mainLoop()
   twist.angular.z = 0.;
   cmd_vel_pub_.publish(twist);
 
+  // Cancel all goals
+  move_base_action_client_.cancelAllGoals();
+
+
   // The map is stored in "map_"
   // You will probably need the data stored in "map_.info"
   // You can also access the map data as an OpenCV image with "map_image_"
 
   // Here's an example of getting the current pose and sending a goal to "move_base":
-  geometry_msgs::Pose2D pose_2d = getPose2d();
+  pose_2d = getPose2d();
 
   // ROS_INFO_STREAM("Current pose: " << pose_2d);
 
@@ -358,9 +543,9 @@ void BrickSearch::mainLoop()
   // ROS_INFO_STREAM("Target pose: " << pose_2d);
 
   // Send a goal to "move_base" with "move_base_action_client_"
-  move_base_msgs::MoveBaseActionGoal action_goal{};
+  // move_base_msgs::MoveBaseActionGoal action_goal{};
 
-  action_goal.goal.target_pose.header.frame_id = "map";
+  // action_goal.goal.target_pose.header.frame_id = "map";
   // action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
   // ROS_INFO("Sending goal...");
@@ -384,51 +569,13 @@ void BrickSearch::mainLoop()
     }
     else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
     {
-      pose_2d = getPose2d();
-      
-      // Print the state of the goal
-      ROS_INFO_STREAM(state.getText());
-
-      ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-      // Generate Random Goal
-      WorldPosition worldPos = findRandGoal(validWorldPos);
-
-      // Update pose with random valid goal
-      pose_2d.x = worldPos.x;
-      pose_2d.y = worldPos.y;
-
-      ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-      ROS_INFO("Sending goal...");
-      move_base_action_client_.sendGoal(action_goal.goal);
+      sendRandGoal(getPose2d(), action_goal);
     }
     else
     {
       ROS_INFO("Error");
 
-      pose_2d = getPose2d();
-
-      // Print the state of the goal
-      ROS_INFO_STREAM(state.getText());
-
-      ROS_INFO_STREAM("Current pose: " << pose_2d);
-
-      // Generate Random Goal
-      WorldPosition worldPos = findRandGoal(validWorldPos);
-
-      // Update pose with random valid goal
-      pose_2d.x = worldPos.x;
-      pose_2d.y = worldPos.y;
-
-      ROS_INFO_STREAM("Target pose: " << pose_2d);
-
-      action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
-
-      ROS_INFO("Sending goal...");
-      move_base_action_client_.sendGoal(action_goal.goal);
+      sendRandGoal(getPose2d(), action_goal);
     }
     
 
