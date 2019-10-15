@@ -68,6 +68,7 @@ private:
   // Variables
   std::vector<GridPosition> validGridPos;
   std::vector<WorldPosition> validWorldPos;  
+  double resolution = 0.05;
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
   void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
@@ -147,7 +148,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   cv::namedWindow( "Erode", 0 );// Create a window for display.
   cv::imshow( "Erode", imageErosion );
 
-  cv::waitKey(0);
+  
 
   occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
   
@@ -156,22 +157,70 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   int y = 0;
   GridPosition currGridPos;
   WorldPosition currWorldPos;
-  for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
-  {
-    int data = map_.data[i];
-    if (data != -1 && data != 100)
-    {
-      // Store valid Grid Position
-      currGridPos.x = i%map_.info.width;
-      currGridPos.y = i/map_.info.width;
-      validGridPos.push_back(currGridPos);
 
-      // Store valid World Pos
-      currWorldPos = occupancy_grid_.getWorldPosition(currGridPos);
-      validWorldPos.push_back(currWorldPos);
-    }
+  static cv::Vec3b tempVec;
+
+  ROS_INFO_STREAM("X size of original map" << map_.info.width);
+  ROS_INFO_STREAM("Y size of original map" << map_.info.height);
+  ROS_INFO_STREAM("X size of map image" << map_image_.size().width);
+  ROS_INFO_STREAM("Y size of map image" << map_image_.size().height);
+  ROS_INFO_STREAM("X size of dilated map image" << imageDilate.size().width);
+  ROS_INFO_STREAM("Y size of dilated map image" << imageDilate.size().height);
+  cv::waitKey(0);
+  for (int32_t y =0; y< imageDilate.size().height; y++)
+  {
+    for (int32_t x = 0 ; x< imageDilate.size().width; x++)
+    {
+      // ROS_INFO_STREAM("CurrentCount" << count);
+      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
+      tempVec = imageDilate.at<cv::Vec3b>(y,x);
       
+      // ROS_INFO_STREAM("Y: "<<y);
+      // ROS_INFO_STREAM("X: "<<x);
+      // ROS_INFO_STREAM("Value of vector: " << tempVec);
+      // ROS_INFO_STREAM(" ");
+      int count = 0;
+      // if (tempVec.val[1] == 0)
+      for (int i = 0; i < 3; i++)
+      {
+
+        if (tempVec.val[i] == 0)
+        {
+          count++;
+          if (count == 3)
+          {
+            ROS_INFO_STREAM("Y: "<<y);
+            ROS_INFO_STREAM("X: "<<x);
+            ROS_INFO_STREAM("Value of vector: " << tempVec);
+          // ROS_INFO_STREAM("Value of vector: " << tempVec);
+            currGridPos.x = x;
+            currGridPos.y = y;
+            validGridPos.push_back(currGridPos);
+
+            // Store valid World Pos
+            currWorldPos = occupancy_grid_.getWorldPosition(currGridPos);
+            validWorldPos.push_back(currWorldPos); 
+          } 
+        }
+      }
+    }
   }
+  // for (int i = 0 ; i < map_.info.width*map_.info.height; i++)
+  // {
+  //   int data = map_.data[i];
+  //   if (data != -1 && data != 100)
+  //   {
+  //     // Store valid Grid Position
+  //     currGridPos.x = i%map_.info.width;
+  //     currGridPos.y = i/map_.info.width;
+  //     validGridPos.push_back(currGridPos);
+
+  //     // Store valid World Pos
+  //     currWorldPos = occupancy_grid_.getWorldPosition(currGridPos);
+  //     validWorldPos.push_back(currWorldPos);
+  //   }
+      
+  // }
         
   // Print sizes
   ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
