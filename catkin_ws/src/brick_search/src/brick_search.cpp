@@ -78,6 +78,8 @@ private:
   cv::Mat map_image_{};
   std::atomic<bool> localised_{ false };
   std::atomic<bool> brick_found_{ false };
+  bool findBrick(const cv::Mat image);
+  bool MoveToBrick();
   int image_msg_count_ = 0;
   //Initialise map limit variables
   double map_x_min = 0., map_x_max = 0., map_y_min = 0., map_y_max = 0.;
@@ -252,9 +254,59 @@ void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStampe
   }
 }
 
+bool BrickSearch::findBrick(const cv::Mat image)
+{
+  static cv::Size s = image.size();
+  ROS_INFO_STREAM("RedImage Y: " << s.height);
+  ROS_INFO_STREAM("RedImage X: " << s.width);
+  static int32_t imagePix = s.height*s.width;
+
+  int32_t count = 0;
+
+  // ROS_INFO_STREAM("Image" << tempVec);
+  static cv::Vec3b tempVec;
+
+  for (int32_t y =1; y< s.height; y++)
+  {
+    for (int32_t x = 1 ; x< s.width; x++)
+    {
+      // ROS_INFO_STREAM("CurrentCount" << count);
+      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
+      tempVec = image.at<cv::Vec3b>(y,x);
+      
+      // ROS_INFO_STREAM("Y: "<<y);
+      // ROS_INFO_STREAM("X: "<<x);
+      // ROS_INFO_STREAM("Value of vector: " << tempVec);
+      // ROS_INFO_STREAM(" ");
+      
+      if (tempVec.val[1] > 1)
+      {
+        // ROS_INFO_STREAM("Value of vector: " << tempVec);
+          count ++;        
+      }
+    }
+  }
+
+  ROS_INFO_STREAM("Final Count: " << count);
+  ROS_INFO_STREAM("% Red Pixels: " << count/(double)imagePix);
+
+  if (count/(double)imagePix > 0.1)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+bool BrickSearch::MoveToBrick()
+{
+  
+}
+
 void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 {
   // Use this method to identify when the brick is visible
+  static bool searchForBrick = true;
 
   // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
   if (image_msg_count_ < 5)
@@ -292,45 +344,24 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // Mask of image with only red pixels
   // std::cin.get();
-  static cv::Size s = redImage.size();
-  ROS_INFO_STREAM("RedImage Y: " << s.height);
-  ROS_INFO_STREAM("RedImage X: " << s.width);
-  static int32_t redImagePix = s.height*s.width;
+  
 
-  int32_t count = 0;
-
-  // ROS_INFO_STREAM("Image" << tempVec);
-  static cv::Vec3b tempVec;
-
-  for (int32_t y =1; y< s.height; y++)
+  if (searchForBrick)
   {
-    for (int32_t x = 1 ; x< s.width; x++)
-    {
-      // ROS_INFO_STREAM("CurrentCount" << count);
-      // ROS_INFO_STREAM("Value"<<redImage.at<cv::Vec3b>(y,x));
-      tempVec = redImage.at<cv::Vec3b>(y,x);
-      
-      // ROS_INFO_STREAM("Y: "<<y);
-      // ROS_INFO_STREAM("X: "<<x);
-      // ROS_INFO_STREAM("Value of vector: " << tempVec);
-      // ROS_INFO_STREAM(" ");
-      
-      if (tempVec.val[1] > 1)
-      {
-        // ROS_INFO_STREAM("Value of vector: " << tempVec);
-          count ++;        
-      }
-    }
+    searchForBrick = !findBrick(redImage);
   }
-
-  ROS_INFO_STREAM("Final Count: " << count);
-  ROS_INFO_STREAM("% Red Pixels: " << count/(double)redImagePix);
-  if (count/(double)redImagePix > 0.2)
+  else
   {
-    brick_found_ = true;
-    ROS_INFO_STREAM("Brick Found");
+
+  }
+  
+  
+  // if (count/(double)redImagePix > 0.2)
+  // {
+  //   brick_found_ = true;
+  //   ROS_INFO_STREAM("Brick Found");
     
-  }
+  // }
 
   ROS_INFO_STREAM("Number of Pixels: " << redImage.size());
   // cv::waitKey(0);
