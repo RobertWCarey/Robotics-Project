@@ -79,7 +79,7 @@ private:
   std::atomic<bool> localised_{ false };
   std::atomic<bool> brick_found_{ false };
   bool findBrick(const cv::Mat image);
-  bool MoveToBrick();
+  bool moveToBrick(const cv::Mat image);
   int image_msg_count_ = 0;
   //Initialise map limit variables
   double map_x_min = 0., map_x_max = 0., map_y_min = 0., map_y_max = 0.;
@@ -257,8 +257,11 @@ void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStampe
 bool BrickSearch::findBrick(const cv::Mat image)
 {
   static cv::Size s = image.size();
-  ROS_INFO_STREAM("RedImage Y: " << s.height);
-  ROS_INFO_STREAM("RedImage X: " << s.width);
+  const double redPixThres = 0.1;
+  ROS_INFO_STREAM("Locate Brick");
+
+  // ROS_INFO_STREAM("RedImage Y: " << s.height);
+  // ROS_INFO_STREAM("RedImage X: " << s.width);
   static int32_t imagePix = s.height*s.width;
 
   int32_t count = 0;
@@ -287,10 +290,10 @@ bool BrickSearch::findBrick(const cv::Mat image)
     }
   }
 
-  ROS_INFO_STREAM("Final Count: " << count);
+  // ROS_INFO_STREAM("Final Count: " << count);
   ROS_INFO_STREAM("% Red Pixels: " << count/(double)imagePix);
 
-  if (count/(double)imagePix > 0.1)
+  if (count/(double)imagePix > redPixThres)
   {
     return true;
   }
@@ -298,9 +301,24 @@ bool BrickSearch::findBrick(const cv::Mat image)
   return false;
 }
 
-bool BrickSearch::MoveToBrick()
+bool BrickSearch::moveToBrick(const cv::Mat image)
 {
-  
+  ROS_INFO_STREAM("Move To Brick");
+  // cv::Mat image_Left, image_Mid, image_Right;
+
+  // image.colRange(0,639).copyTo(image_Left.colRange(0,639));
+  // cv::Mat image_Left = image(cv::Rect(640,1080,1920,1080));
+  cv::Mat image_Left = image(cv::Range(0,640),cv::Range(0 ,1080));
+  cv::Mat image_Left2 = image(cv::Range(0,1080),cv::Range(0 ,640));
+
+  ROS_INFO_STREAM(image_Left.size());
+  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  cv::imshow( "Standard Image", image_Left );
+  cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
+  cv::imshow( "Standard Image2", image_Left2);
+  cv::waitKey(0);
+
+  return false;
 }
 
 void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
@@ -346,14 +364,16 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // std::cin.get();
   
 
-  if (searchForBrick)
-  {
-    searchForBrick = !findBrick(redImage);
-  }
-  else
-  {
-
-  }
+  searchForBrick = moveToBrick(image);
+  // !searchForBrick for FindBrick
+  // if (!searchForBrick)
+  // {
+  //   searchForBrick = findBrick(redImage);
+  // }
+  // else
+  // {
+  //   searchForBrick = moveToBrick(redImage);
+  // }
   
   
   // if (count/(double)redImagePix > 0.2)
