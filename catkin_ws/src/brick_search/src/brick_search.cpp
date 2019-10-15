@@ -71,6 +71,7 @@ private:
   std::vector<WorldPosition> NEquad, NWquad, SEquad, SWquad;
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
   void divideValidPos(const std::vector<WorldPosition> worldPositions);
+  int quadNum = 0;
   void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
@@ -159,7 +160,7 @@ BrickSearch::BrickSearch(ros::NodeHandle& nh) : it_{ nh }
   // Print sizes
   ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
   ROS_INFO("Number of Valid World Positions %d", validWorldPos.size());
-
+  divideValidPos(validWorldPos);
   
   // Create an occupancy grid from the occupancy grid message
   occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
@@ -208,7 +209,6 @@ WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPo
 
   ROS_INFO("X Pos %f", randWorldPos.x);
   ROS_INFO("Y Pos %f", randWorldPos.y);
-  divideValidPos(worldPositions);
   return randWorldPos;
 }
 
@@ -351,10 +351,36 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
 void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal)
 {
+  WorldPosition worldPos;
     ROS_INFO_STREAM("Current pose: " << pose2d);
-
-  // Generate Random Goal
-  WorldPosition worldPos = findRandGoal(validWorldPos);
+  if (quadNum == 0)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(NEquad);
+    ROS_INFO_STREAM("Selected from NE quad");
+    quadNum++;
+  }
+  else if (quadNum == 1)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(SEquad);
+    ROS_INFO_STREAM("Selected from SE quad");
+    quadNum++;
+  }
+  else if (quadNum == 2)
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(SWquad);
+    ROS_INFO_STREAM("Selected from SW quad");
+    quadNum++;
+  }
+  else
+  {
+    // Generate Random Goal
+    worldPos = findRandGoal(NWquad);
+    ROS_INFO_STREAM("Selected from NW quad");
+    quadNum = 0;
+  }
 
   // Update pose with random valid goal
   pose2d.x = worldPos.x;
@@ -397,10 +423,6 @@ void BrickSearch::divideValidPos(const std::vector<WorldPosition> worldPositions
       minPos.y = pos.y;
     }
   }
-  ROS_INFO_STREAM("Max X" << maxPos.x);
-  ROS_INFO_STREAM("Max y" << maxPos.y);
-  ROS_INFO_STREAM("Min X" << minPos.x);
-  ROS_INFO_STREAM("Min y" << minPos.y);
   // Calculate average x and y positions
   avePos.x = (minPos.x + maxPos.x) / 2.;
   avePos.y = (minPos.y + maxPos.y) / 2.;
@@ -426,10 +448,6 @@ void BrickSearch::divideValidPos(const std::vector<WorldPosition> worldPositions
     }
     
   }
-  ROS_INFO_STREAM("Number in NEQuad" << NEquad.size());
-  ROS_INFO_STREAM("Number in SEQuad" << SEquad.size());
-  ROS_INFO_STREAM("Number in SWQuad" << SWquad.size());
-  ROS_INFO_STREAM("Number in NWQuad" << NWquad.size());
 
 }
 
