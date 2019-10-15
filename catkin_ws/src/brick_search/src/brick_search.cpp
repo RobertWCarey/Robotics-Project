@@ -2,7 +2,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
-
+#include <limits>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/highgui.hpp>
@@ -67,8 +67,10 @@ public:
 private:
   // Variables
   std::vector<GridPosition> validGridPos;
-  std::vector<WorldPosition> validWorldPos;  
+  std::vector<WorldPosition> validWorldPos;
+  std::vector<WorldPosition> NEquad, NWquad, SEquad, SWquad;
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
+  void divideValidPos(const std::vector<WorldPosition> worldPositions);
   void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
@@ -206,7 +208,7 @@ WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPo
 
   ROS_INFO("X Pos %f", randWorldPos.x);
   ROS_INFO("Y Pos %f", randWorldPos.y);
-
+  divideValidPos(worldPositions);
   return randWorldPos;
 }
 
@@ -364,6 +366,71 @@ void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::Mov
 
   ROS_INFO("Sending goal...");
   move_base_action_client_.sendGoal(actionGoal.goal);
+}
+
+void BrickSearch::divideValidPos(const std::vector<WorldPosition> worldPositions)
+{
+  WorldPosition maxPos, minPos, avePos;
+  // Initialise max and min positions
+  maxPos.x = 0.;
+  maxPos.y = 0.;
+  minPos.x = std::numeric_limits<double>::max();
+  minPos.y = std::numeric_limits<double>::max();
+  
+  // Get max and min positions from valid positions
+  for (auto pos : worldPositions)
+  {
+    if (pos.x > maxPos.x)
+    {
+      maxPos.x = pos.x;
+    }
+    if (pos.y > maxPos.y)
+    {
+      maxPos.y = pos.y;
+    }
+    if (pos.x < minPos.x)
+    {
+      minPos.x = pos.x;
+    }
+    if (pos.y < minPos.y)
+    {
+      minPos.y = pos.y;
+    }
+  }
+  ROS_INFO_STREAM("Max X" << maxPos.x);
+  ROS_INFO_STREAM("Max y" << maxPos.y);
+  ROS_INFO_STREAM("Min X" << minPos.x);
+  ROS_INFO_STREAM("Min y" << minPos.y);
+  // Calculate average x and y positions
+  avePos.x = (minPos.x + maxPos.x) / 2.;
+  avePos.y = (minPos.y + maxPos.y) / 2.;
+
+
+  for (auto pos : worldPositions)
+  {
+    if (pos.x >= avePos.x && pos.y >= avePos.y)
+    {
+      NEquad.push_back(pos);
+    }
+    else if (pos.x > avePos.x && pos.y < avePos.y)
+    {
+      SEquad.push_back(pos);
+    }
+    else if (pos.x <= avePos.x && pos.y <= avePos.y)
+    {
+      SWquad.push_back(pos);
+    }
+    else
+    {
+      NWquad.push_back(pos);
+    }
+    
+  }
+  ROS_INFO_STREAM("Number in NEQuad" << NEquad.size());
+  ROS_INFO_STREAM("Number in SEQuad" << SEquad.size());
+  ROS_INFO_STREAM("Number in SWQuad" << SWquad.size());
+  ROS_INFO_STREAM("Number in NWQuad" << NWquad.size());
+
 }
 
 void BrickSearch::mainLoop()
