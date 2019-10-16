@@ -338,19 +338,42 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   pixRight =getPixPercent(image_Right);
 
   double largest = getLargest(pixLeft,pixMid,pixRight);
-  if  (largest == pixLeft)
-    ROS_INFO_STREAM("LEFT IS BIGGEST");
-  else if (largest == pixMid)
-    ROS_INFO_STREAM("Mid IS BIGGEST");
-  else if (largest == pixRight)
-    ROS_INFO_STREAM("Right IS BIGGEST");
-  else
+  twist.angular.z = 0.;
+  twist.linear.x = 0.;
+  if (largest < 0.01)
+  {
+    largest = 0;
     ROS_INFO_STREAM("No Match");
+  }
+  else if (largest == pixLeft)
+  {
+    ROS_INFO_STREAM("LEFT IS BIGGEST");
+    twist.angular.z = 0.1;
+  }
+  else if (largest == pixMid)
+  {
+    ROS_INFO_STREAM("Mid IS BIGGEST");
+    twist.linear.x = 0.05;
+  }
+  else if (largest == pixRight)
+  {
+    ROS_INFO_STREAM("Right IS BIGGEST");
+    twist.angular.z = -0.1;
+  }
+
+  if (pixMid > 0.9)
+  {
+    twist.angular.z = 0.;
+    twist.linear.x = 0.;
+    ROS_INFO_STREAM("BRICK FOUND");
+  }
+
+    
 
   // twist.angular.z = 1.;
   
   
-  // cmd_vel_pub_.publish(twist);
+  cmd_vel_pub_.publish(twist);
 
 
   return false;
