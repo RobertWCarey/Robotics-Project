@@ -76,8 +76,8 @@ private:
   OccupancyGrid occupancy_grid_;
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
-  std::atomic<bool> localised_{ false };
-  std::atomic<bool> brick_found_{ false };
+  std::atomic<bool> localised_{ true };
+  std::atomic<bool> brick_found_{ true };
   bool findBrick(const cv::Mat image);
   bool moveToBrick(const cv::Mat image);
   double getPixPercent(const cv::Mat image);
@@ -259,10 +259,13 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 {
   cv::Size imageSize = image.size();
   int32_t whitePixCnt = 0;
-  static cv::Vec3b tempVec;
+  cv::Vec3b tempVec;
   double whitePixPerc = 0.;
 
   int32_t imagePix = imageSize.height*imageSize.width;
+  ROS_INFO_STREAM("x: "<<imageSize.width);
+  ROS_INFO_STREAM("y: "<<imageSize.height);
+
   
   for (int16_t y =1; y < imageSize.height; y++)
   {
@@ -272,6 +275,9 @@ double BrickSearch::getPixPercent(const cv::Mat image)
             
       if (tempVec.val[1] > 1)
       {
+        // ROS_INFO_STREAM("x: "<<x);
+        // ROS_INFO_STREAM("y: "<<y);
+        // ROS_INFO_STREAM("Value: "<<tempVec);
         whitePixCnt ++;        
       }
     }
@@ -279,6 +285,7 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 
   whitePixPerc = whitePixCnt/(double)imagePix;
 
+  ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
   ROS_INFO_STREAM("% White Pixels: " << whitePixPerc);
   return whitePixPerc;
 }
@@ -290,6 +297,12 @@ bool BrickSearch::findBrick(const cv::Mat image)
   ROS_INFO_STREAM("Locate Brick");
 
   redPixPerc = getPixPercent(image);
+
+  // ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
+  ROS_INFO_STREAM("% Red Pixels: " << redPixPerc);
+  cv::namedWindow( "findBrick Image", 0 );// Create a window for display.
+  cv::imshow( "findBrick Image", image );
+  cv::waitKey(0);
 
   if (redPixPerc > redPixThres)
   {
@@ -314,9 +327,20 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   cv::Mat image_Right = image(cv::Range(0,segHeight-1),cv::Range((segWidth*2) ,(segWidth*3)-1));
 
 
-  ROS_INFO_STREAM("Image Left %" << getPixPercent(image_Left));
-  // ROS_INFO_STREAM(image_Mid.size());
-  // ROS_INFO_STREAM(image_Right.size());
+  ROS_INFO_STREAM("Image Left %");
+  getPixPercent(image_Left);
+  ROS_INFO_STREAM("Image Mid %");
+  getPixPercent(image_Mid);
+  ROS_INFO_STREAM("Image Right %");
+  getPixPercent(image_Right);
+
+  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  cv::imshow( "Standard Image", image_Left );
+  cv::namedWindow( "Standard Image1", 0 );// Create a window for display.
+  cv::imshow( "Standard Image1", image_Mid );
+  cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
+  cv::imshow( "Standard Image2", image_Right );
+  cv::waitKey(0); 
   
 
   return false;
@@ -345,9 +369,9 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   cv::Mat& image = image_ptr->image;
   // cv::Mat hsvImage;
   // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
-  // cv::namedWindow( "Standard Image", 0 );// Create a window for display.
-  // cv::imshow( "Standard Image", image );
-  // cv::waitKey(0); 
+  cv::namedWindow( "Image", 0 );// Create a window for display.
+  cv::imshow( "Image", image );
+  cv::waitKey(0); 
 
   // ROS_INFO(image);
   // ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
@@ -364,15 +388,20 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // Mask of image with only red pixels
   // std::cin.get();
   
-
-  searchForBrick = moveToBrick(image);
+  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
+  cv::imshow( "Standard Image", redImage );
+  cv::waitKey(0);
+  searchForBrick = findBrick(redImage);
   // !searchForBrick for FindBrick
   // if (!searchForBrick)
   // {
+  //   brick_found_ = false;
   //   searchForBrick = findBrick(redImage);
   // }
   // else
   // {
+  //   brick_found_ = true;
+  //   move_base_action_client_.cancelAllGoals();
   //   searchForBrick = moveToBrick(redImage);
   // }
   
@@ -513,6 +542,7 @@ void BrickSearch::mainLoop()
   action_goal.goal.target_pose.header.frame_id = "map";
   geometry_msgs::Pose2D pose_2d = getPose2d();
 
+  // Localisation stage
   while (ros::ok())
   {
     
@@ -603,10 +633,6 @@ void BrickSearch::mainLoop()
   // ROS_INFO("Sending goal...");
   // move_base_action_client_.sendGoal(action_goal.goal);
 
-
-  
-
-
   // This loop repeats until ROS shuts down, you probably want to put all your code in here
   while (ros::ok())
   {
@@ -615,21 +641,23 @@ void BrickSearch::mainLoop()
     // Get the state of the goal
     actionlib::SimpleClientGoalState state = move_base_action_client_.getState();
 
-    if ((state == actionlib::SimpleClientGoalState::PENDING) || (state == actionlib::SimpleClientGoalState::ACTIVE))
-    {
+    if (!brick_found_)
+    {  
+      if ((state == actionlib::SimpleClientGoalState::PENDING) || (state == actionlib::SimpleClientGoalState::ACTIVE))
+      {
 
-    }
-    else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
-    {
-      sendRandGoal(getPose2d(), action_goal);
-    }
-    else
-    {
-      ROS_INFO("Error");
+      }
+      else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
+      {
+        sendRandGoal(getPose2d(), action_goal);
+      }
+      else
+      {
+        ROS_INFO("Error");
 
-      sendRandGoal(getPose2d(), action_goal);
-    }
-    
+        sendRandGoal(getPose2d(), action_goal);
+      }
+    }   
 
     // Delay so the loop doesn't run too fast
     ros::Duration(0.2).sleep();
