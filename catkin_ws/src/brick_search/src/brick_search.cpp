@@ -71,6 +71,7 @@ private:
   std::vector<WorldPosition> NEquad, NWquad, SEquad, SWquad;
   WorldPosition findRandGoal(const std::vector<WorldPosition> worldPositions);
   void divideValidPos(const std::vector<WorldPosition> worldPositions);
+  double getLargest(const double n1, const double n2, const double n3);
   int quadNum = 0;
   void sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal);
   OccupancyGrid occupancy_grid_;
@@ -297,38 +298,60 @@ bool BrickSearch::findBrick(const cv::Mat image)
   return false;
 }
 
+double BrickSearch::getLargest(const double n1, const double n2, const double n3)
+{
+  
+  if (n1 > n2)
+  {
+    if (n1 > n3)
+      return n1;
+    else
+      return n3;
+  }
+  else
+  {
+    if (n2 > n3)
+      return  n2;
+    else
+      return n3;
+  }
+}
+
 bool BrickSearch::moveToBrick(const cv::Mat image)
 {
   ROS_INFO_STREAM("Move To Brick");
   static int16_t segWidth = 640;
   static int16_t segHeight = 1080;
+  double pixLeft, pixMid, pixRight;
+  geometry_msgs::Twist twist{};
 
-  // cv::Mat image_Left, image_Mid, image_Right;
-
-  // image.colRange(0,639).copyTo(image_Left.colRange(0,639));
-  // cv::Mat image_Left = image(cv::Rect(640,1080,1920,1080));
-  // cv::Rect leftCrop(1, 1, 639, 1079);
-  // cv::Mat image_Left = image(leftCrop);
   cv::Mat image_Left = image(cv::Range(0,segHeight-1),cv::Range(0 ,segWidth-1));
   cv::Mat image_Mid = image(cv::Range(0,segHeight-1),cv::Range(segWidth ,(segWidth*2)-1));
   cv::Mat image_Right = image(cv::Range(0,segHeight-1),cv::Range((segWidth*2) ,(segWidth*3)-1));
 
 
   ROS_INFO_STREAM("Image Left %");
-  getPixPercent(image_Left);
+  pixLeft = getPixPercent(image_Left);
   ROS_INFO_STREAM("Image Mid %");
-  getPixPercent(image_Mid);
+  pixMid = getPixPercent(image_Mid);
   ROS_INFO_STREAM("Image Right %");
-  getPixPercent(image_Right);
+  pixRight =getPixPercent(image_Right);
 
-  cv::namedWindow( "Standard Image", 0 );// Create a window for display.
-  cv::imshow( "Standard Image", image_Left );
-  cv::namedWindow( "Standard Image1", 0 );// Create a window for display.
-  cv::imshow( "Standard Image1", image_Mid );
-  cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
-  cv::imshow( "Standard Image2", image_Right );
-  cv::waitKey(0); 
+  double largest = getLargest(pixLeft,pixMid,pixRight);
+  if  (largest == pixLeft)
+    ROS_INFO_STREAM("LEFT IS BIGGEST");
+  else if (largest == pixMid)
+    ROS_INFO_STREAM("Mid IS BIGGEST");
+  else if (largest == pixRight)
+    ROS_INFO_STREAM("Right IS BIGGEST");
+  else
+    ROS_INFO_STREAM("No Match");
+
+  // twist.angular.z = 1.;
   
+  
+  // cmd_vel_pub_.publish(twist);
+
 
   return false;
 }
