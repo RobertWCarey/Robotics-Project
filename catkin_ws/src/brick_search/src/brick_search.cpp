@@ -307,48 +307,26 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
 
   // image.colRange(0,639).copyTo(image_Left.colRange(0,639));
   // cv::Mat image_Left = image(cv::Rect(640,1080,1920,1080));
-  cv::Rect leftCrop(1, 1, 639, 1079);
-  cv::Mat image_Left = image(leftCrop);
-  // cv::Mat image_Left = image(cv::Range(0,segHeight-1),cv::Range(0 ,segWidth-1));
+  // cv::Rect leftCrop(1, 1, 639, 1079);
+  // cv::Mat image_Left = image(leftCrop);
+  cv::Mat image_Left = image(cv::Range(0,segHeight-1),cv::Range(0 ,segWidth-1));
   cv::Mat image_Mid = image(cv::Range(0,segHeight-1),cv::Range(segWidth ,(segWidth*2)-1));
   cv::Mat image_Right = image(cv::Range(0,segHeight-1),cv::Range((segWidth*2) ,(segWidth*3)-1));
 
 
   ROS_INFO_STREAM("Image Left %");
-  // getPixPercent(image_Left);
-  cv::Size imageSize = image_Left.size();
-  int32_t whitePixCnt = 0;
-  cv::Vec3b tempVec;
-  double whitePixPerc = 0.;
-  // cv::Mat grayFuck;
-  // cv::cvtColor(image_Left, grayFuck,CV_BGR2GRAY);
-
-  
-
-
-  int32_t imagePix = imageSize.height*imageSize.width;
-  ROS_INFO_STREAM("x: "<<imageSize.width);
-  ROS_INFO_STREAM("y: "<<imageSize.height);
-
-  whitePixCnt = cv::countNonZero(image_Left);
-  // whitePixCnt = 
-
-  whitePixPerc = whitePixCnt/(double)imagePix;
-
-  ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
-  ROS_INFO_STREAM("% White Pixels: " << whitePixPerc);
-  ROS_INFO_STREAM("Func White Pix"<<getPixPercent(image_Left));
-  // ROS_INFO_STREAM("Image Mid %");
-  // getPixPercent(image_Mid);
-  // ROS_INFO_STREAM("Image Right %");
-  // getPixPercent(image_Right);
+  getPixPercent(image_Left);
+  ROS_INFO_STREAM("Image Mid %");
+  getPixPercent(image_Mid);
+  ROS_INFO_STREAM("Image Right %");
+  getPixPercent(image_Right);
 
   cv::namedWindow( "Standard Image", 0 );// Create a window for display.
   cv::imshow( "Standard Image", image_Left );
-  // cv::namedWindow( "Standard Image1", 0 );// Create a window for display.
-  // cv::imshow( "Standard Image1", image_Mid );
-  // cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
-  // cv::imshow( "Standard Image2", image_Right );
+  cv::namedWindow( "Standard Image1", 0 );// Create a window for display.
+  cv::imshow( "Standard Image1", image_Mid );
+  cv::namedWindow( "Standard Image2", 0 );// Create a window for display.
+  cv::imshow( "Standard Image2", image_Right );
   cv::waitKey(0); 
   
 
