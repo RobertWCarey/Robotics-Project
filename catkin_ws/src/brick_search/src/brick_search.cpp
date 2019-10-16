@@ -266,22 +266,7 @@ double BrickSearch::getPixPercent(const cv::Mat image)
   ROS_INFO_STREAM("x: "<<imageSize.width);
   ROS_INFO_STREAM("y: "<<imageSize.height);
 
-  
-  for (int16_t y =1; y < imageSize.height; y++)
-  {
-    for (int16_t x = 1 ; x < imageSize.width; x++)
-    {
-      tempVec = image.at<cv::Vec3b>(y,x);
-            
-      if (tempVec.val[1] > 1)
-      {
-        // ROS_INFO_STREAM("x: "<<x);
-        // ROS_INFO_STREAM("y: "<<y);
-        // ROS_INFO_STREAM("Value: "<<tempVec);
-        whitePixCnt ++;        
-      }
-    }
-  }
+  whitePixCnt = cv::countNonZero(image);
 
   whitePixPerc = whitePixCnt/(double)imagePix;
 
@@ -345,13 +330,14 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   ROS_INFO_STREAM("x: "<<imageSize.width);
   ROS_INFO_STREAM("y: "<<imageSize.height);
 
-  whitePixCnt = imagePix-cv::countNonZero(image_Left);
+  whitePixCnt = cv::countNonZero(image_Left);
   // whitePixCnt = 
 
   whitePixPerc = whitePixCnt/(double)imagePix;
 
   ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
   ROS_INFO_STREAM("% White Pixels: " << whitePixPerc);
+  ROS_INFO_STREAM("Func White Pix"<<getPixPercent(image_Left));
   // ROS_INFO_STREAM("Image Mid %");
   // getPixPercent(image_Mid);
   // ROS_INFO_STREAM("Image Right %");
