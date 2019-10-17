@@ -278,7 +278,7 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 
 bool BrickSearch::findBrick(const cv::Mat image)
 {
-  const double redPixThres = 0.05;
+  const double redPixThres = 0.01;
   double redPixPerc = 0.;
   ROS_INFO_STREAM("Locate Brick");
 
@@ -460,6 +460,7 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
       twist.linear.x = 0.;
       cmd_vel_pub_.publish(twist);
       ROS_INFO_STREAM("Movement stopped");
+      moveCancelled = true;
     }
     
     brick_found_ = true;
