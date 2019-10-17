@@ -718,7 +718,7 @@ void BrickSearch::mainLoop()
         ros::Duration d = ros::Duration(8, 0);
         while (ros::ok())
         {
-          if ((newtime - time) > d)
+          if ((newtime - time) > d || brick_found_)
           {
             break;
           }
