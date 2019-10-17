@@ -286,9 +286,9 @@ bool BrickSearch::findBrick(const cv::Mat image)
 
   // ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
   ROS_INFO_STREAM("% Red Pixels: " << redPixPerc);
-  cv::namedWindow( "findBrick Image", 0 );// Create a window for display.
-  cv::imshow( "findBrick Image", image );
-  cv::waitKey(0);
+  // cv::namedWindow( "findBrick Image", 0 );// Create a window for display.
+  // cv::imshow( "findBrick Image", image );
+  // cv::waitKey(0);
 
   if (redPixPerc > redPixThres)
   {
@@ -428,19 +428,19 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
   // cv::imshow( "Standard Image", redImage );
   // cv::waitKey(0);
 
-  searchForBrick = moveToBrick(redImage);
+  // searchForBrick = moveToBrick(redImage);
   // !searchForBrick for FindBrick
-  // if (!searchForBrick)
-  // {
-  //   brick_found_ = false;
-  //   searchForBrick = findBrick(redImage);
-  // }
-  // else
-  // {
-  //   brick_found_ = true;
-  //   move_base_action_client_.cancelAllGoals();
-  //   searchForBrick = moveToBrick(redImage);
-  // }
+  if (!searchForBrick)
+  {
+    brick_found_ = false;
+    searchForBrick = findBrick(redImage);
+  }
+  else
+  {
+    brick_found_ = true;
+    move_base_action_client_.cancelAllGoals();
+    searchForBrick = moveToBrick(redImage);
+  }
   
   
   // if (count/(double)redImagePix > 0.2)
@@ -581,8 +581,8 @@ void BrickSearch::mainLoop()
 
   // Localisation stage
   
-  // while (ros::ok())
-  while(0)
+  while (ros::ok())
+  // while(0)
   {
     
     
