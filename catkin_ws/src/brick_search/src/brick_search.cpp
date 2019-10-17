@@ -720,6 +720,7 @@ void BrickSearch::mainLoop()
         {
           if ((newtime - time) > d || brick_found_)
           {
+            ROS_INFO_STREAM("Time elapsed or brick found");
             break;
           }
           newtime = ros::Time::now();
