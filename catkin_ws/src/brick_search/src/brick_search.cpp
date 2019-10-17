@@ -278,8 +278,8 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 
 bool BrickSearch::findBrick(const cv::Mat image)
 {
-  const double redPixThres = 0.1;
-  double redPixPerc = 0;
+  const double redPixThres = 0.01;
+  double redPixPerc = 0.;
   ROS_INFO_STREAM("Locate Brick");
 
   redPixPerc = getPixPercent(image);
@@ -385,6 +385,8 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 {
   // Use this method to identify when the brick is visible
   static bool brickIDd = false;
+  static bool moveCancelled = false;
+  geometry_msgs::Twist twist{};
 
   // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
   if (image_msg_count_ < 5)
@@ -402,7 +404,6 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // This is the OpenCV image
   cv::Mat& image = image_ptr->image;
-  ROS_INFO_STREAM("Original Image Type"<<image.type());
   // cv::Mat hsvImage;
   // cv2::cvtColour(image,hsvImage,COLOR_BGR2HSV);
   // cv::namedWindow( "Image", 0 );// Create a window for display.
@@ -411,18 +412,20 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // ROS_INFO(image);
   // ROS_INFO_STREAM(image.at<cv::Vec3b>(5,5));
-  static cv::Scalar upperRed = cv::Scalar(1,1,255);
+  static cv::Scalar upperRed = cv::Scalar(50,50,255);
   static cv::Scalar lowerRed = cv::Scalar(0,0,100);
 
   static cv::Mat redImage;
 
   cv::inRange(image,lowerRed,upperRed,redImage);
-  ROS_INFO_STREAM("Red Image Type"<<redImage.type());
 
-  // cv::namedWindow( "Red Image", 0 );
-  // cv::imshow("Red Image",redImage);
-  // cv::waitKey(0);
 
+  // ROS_INFO_STREAM("Red Image Type"<<redImage.type());
+  
+  cv::namedWindow( "Red Image", 0 );
+  cv::imshow("Red Image",redImage);
+  cv::waitKey(3000);
+  cv::destroyWindow("Red Image");
   // Mask of image with only red pixels
   // std::cin.get();
   
@@ -448,9 +451,18 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   if (brickIDd)
   {
-    ROS_INFO_STREAM("Brick identified, cancelling goals and moving towards it");
+    ROS_INFO_STREAM("Brick identified");
+    if (!moveCancelled)
+    {
+      ROS_INFO_STREAM("Goals shitcanned");
+      move_base_action_client_.cancelAllGoals();
+      twist.angular.z = 0.;
+      twist.linear.x = 0.;
+      cmd_vel_pub_.publish(twist);
+      ROS_INFO_STREAM("Movement stopped");
+    }
+    
     brick_found_ = true;
-    move_base_action_client_.cancelAllGoals();
     moveToBrick(redImage);
   }
   
