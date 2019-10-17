@@ -322,6 +322,7 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   ROS_INFO_STREAM("Move To Brick");
   static int16_t segWidth = 640;
   static int16_t segHeight = 1080;
+  bool match = true;
   double pixLeft, pixMid, pixRight;
   geometry_msgs::Twist twist{};
 
@@ -340,13 +341,14 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   double largest = getLargest(pixLeft,pixMid,pixRight);
   twist.angular.z = 0.;
   twist.linear.x = 0.;
-  // if (largest < 0.01)
-  // {
-  //   largest = 0;
-  //   ROS_INFO_STREAM("No Match");
-  // }
-  // else if (largest == pixLeft)
-  if (largest == pixLeft)
+  if (largest < 0.01)
+  {
+    largest = 0;
+    ROS_INFO_STREAM("No Match");
+    match = false;
+  }
+  else if (largest == pixLeft)
+  // if (largest == pixLeft)
   {
     ROS_INFO_STREAM("LEFT IS BIGGEST");
     twist.angular.z = 0.1;
@@ -366,7 +368,9 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   {
     twist.angular.z = 0.;
     twist.linear.x = 0.;
+    cmd_vel_pub_.publish(twist);
     ROS_INFO_STREAM("BRICK FOUND");
+    // ros::Duration(0.2).sleep();
     ros::shutdown();
   }
 
@@ -378,7 +382,7 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   cmd_vel_pub_.publish(twist);
 
 
-  return false;
+  return match;
 }
 
 void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
@@ -435,23 +439,14 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // searchForBrick = moveToBrick(redImage);
   // !searchForBrick for FindBrick
-  // if (!searchForBrick)
-  // {
-  //   brick_found_ = false;
-  //   searchForBrick = findBrick(redImage);
-  // }
-  // else
-  // {
-  //   brick_found_ = true;
-  //   move_base_action_client_.cancelAllGoals();
-  //   searchForBrick = moveToBrick(redImage);
-  // }
-
-  brickIDd = findBrick(redImage);
-
-  if (brickIDd)
+  if (!brickIDd)
   {
-    ROS_INFO_STREAM("Brick identified");
+    moveCancelled = false;
+    brick_found_ = false;
+    brickIDd = findBrick(redImage);
+  }
+  else
+  {
     if (!moveCancelled)
     {
       ROS_INFO_STREAM("Goals shitcanned");
@@ -462,10 +457,34 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
       ROS_INFO_STREAM("Movement stopped");
       moveCancelled = true;
     }
-    
     brick_found_ = true;
-    moveToBrick(redImage);
+    move_base_action_client_.cancelAllGoals();
+    brickIDd = moveToBrick(redImage);
   }
+
+  // brickIDd = findBrick(redImage);
+
+  // if (brickIDd)
+  // {
+  //   ROS_INFO_STREAM("Brick identified");
+  //   if (!moveCancelled)
+  //   {
+  //     ROS_INFO_STREAM("Goals shitcanned");
+  //     move_base_action_client_.cancelAllGoals();
+  //     twist.angular.z = 0.;
+  //     twist.linear.x = 0.;
+  //     cmd_vel_pub_.publish(twist);
+  //     ROS_INFO_STREAM("Movement stopped");
+  //     moveCancelled = true;
+  //   }
+    
+  //   brick_found_ = true;
+  //   moveToBrick(redImage);
+  // }
+  // else
+  // {
+  //   brick_found_ = false;
+  // }
   
   
   // if (count/(double)redImagePix > 0.2)
@@ -716,7 +735,7 @@ void BrickSearch::mainLoop()
         ROS_INFO_STREAM("Reached goal, gonna spin");
         ros::Time time = ros::Time::now();
         ros::Time newtime;
-        ros::Duration d = ros::Duration(8, 0);
+        ros::Duration d = ros::Duration(20, 0);
         while (ros::ok())
         {
           if ((newtime - time) > d || brick_found_)
