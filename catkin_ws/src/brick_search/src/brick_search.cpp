@@ -278,7 +278,7 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 
 bool BrickSearch::findBrick(const cv::Mat image)
 {
-  const double redPixThres = 0.01;
+  const double redPixThres = 0.05;
   double redPixPerc = 0.;
   ROS_INFO_STREAM("Locate Brick");
 
@@ -422,10 +422,10 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // ROS_INFO_STREAM("Red Image Type"<<redImage.type());
   
-  cv::namedWindow( "Red Image", 0 );
-  cv::imshow("Red Image",redImage);
-  cv::waitKey(3000);
-  cv::destroyWindow("Red Image");
+  // cv::namedWindow( "Red Image", 0 );
+  // cv::imshow("Red Image",redImage);
+  // cv::waitKey(3000);
+  // cv::destroyWindow("Red Image");
   // Mask of image with only red pixels
   // std::cin.get();
   
@@ -642,8 +642,8 @@ void BrickSearch::mainLoop()
       cmd_vel_pub_.publish(twist);
 
       // Send move goal to 0.5 m infront of current posistion
-      pose_2d.x += 0.5 * std::cos(pose_2d.theta);
-      pose_2d.y += 0.5 * std::sin(pose_2d.theta);      
+      pose_2d.x += 1.5 * std::cos(pose_2d.theta);
+      pose_2d.y += 1.5 * std::sin(pose_2d.theta);      
       action_goal.goal.target_pose.pose = pose2dToPose(pose_2d);
 
       // time out after 10sec total with preempt and execute
@@ -712,6 +712,25 @@ void BrickSearch::mainLoop()
       }
       else if (state == actionlib::SimpleClientGoalState::SUCCEEDED)
       {
+        ROS_INFO_STREAM("Reached goal, gonna spin");
+        ros::Time time = ros::Time::now();
+        ros::Time newtime;
+        ros::Duration d = ros::Duration(8, 0);
+        while (ros::ok())
+        {
+          if ((newtime - time) > d)
+          {
+            break;
+          }
+          newtime = ros::Time::now();
+        
+          // Turn slowly
+          twist.angular.z = 0.5;
+          cmd_vel_pub_.publish(twist);
+        }
+        ROS_INFO_STREAM("Stop spinning");
+        twist.angular.z = 0.;
+        cmd_vel_pub_.publish(twist);
         sendRandGoal(getPose2d(), action_goal);
       }
       else
