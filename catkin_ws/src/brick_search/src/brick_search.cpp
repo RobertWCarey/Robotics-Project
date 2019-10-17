@@ -78,7 +78,7 @@ private:
   nav_msgs::OccupancyGrid map_{};
   cv::Mat map_image_{};
   std::atomic<bool> localised_{ true };
-  std::atomic<bool> brick_found_{ true };
+  std::atomic<bool> brick_found_{ false };
   bool findBrick(const cv::Mat image);
   bool moveToBrick(const cv::Mat image);
   double getPixPercent(const cv::Mat image);
@@ -340,12 +340,13 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   double largest = getLargest(pixLeft,pixMid,pixRight);
   twist.angular.z = 0.;
   twist.linear.x = 0.;
-  if (largest < 0.01)
-  {
-    largest = 0;
-    ROS_INFO_STREAM("No Match");
-  }
-  else if (largest == pixLeft)
+  // if (largest < 0.01)
+  // {
+  //   largest = 0;
+  //   ROS_INFO_STREAM("No Match");
+  // }
+  // else if (largest == pixLeft)
+  if (largest == pixLeft)
   {
     ROS_INFO_STREAM("LEFT IS BIGGEST");
     twist.angular.z = 0.1;
@@ -366,6 +367,7 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
     twist.angular.z = 0.;
     twist.linear.x = 0.;
     ROS_INFO_STREAM("BRICK FOUND");
+    ros::shutdown();
   }
 
     
@@ -382,7 +384,7 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
 void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 {
   // Use this method to identify when the brick is visible
-  static bool searchForBrick = true;
+  static bool brickIDd = false;
 
   // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
   if (image_msg_count_ < 5)
@@ -430,16 +432,26 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr& image_msg_ptr)
 
   // searchForBrick = moveToBrick(redImage);
   // !searchForBrick for FindBrick
-  if (!searchForBrick)
+  // if (!searchForBrick)
+  // {
+  //   brick_found_ = false;
+  //   searchForBrick = findBrick(redImage);
+  // }
+  // else
+  // {
+  //   brick_found_ = true;
+  //   move_base_action_client_.cancelAllGoals();
+  //   searchForBrick = moveToBrick(redImage);
+  // }
+
+  brickIDd = findBrick(redImage);
+
+  if (brickIDd)
   {
-    brick_found_ = false;
-    searchForBrick = findBrick(redImage);
-  }
-  else
-  {
+    ROS_INFO_STREAM("Brick identified, cancelling goals and moving towards it");
     brick_found_ = true;
     move_base_action_client_.cancelAllGoals();
-    searchForBrick = moveToBrick(redImage);
+    moveToBrick(redImage);
   }
   
   

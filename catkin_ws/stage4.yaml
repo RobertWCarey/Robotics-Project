@@ -1,4 +1,4 @@
-image: /home/will/Documents/RobSmells/RoboticsProject/catkin_ws/stage4.pgm
+image: /home/will/RoboticsProject/catkin_ws/stage4.pgm
 resolution: 0.050000
 origin: [-10.000000, -10.000000, 0.000000]
 negate: 0
