@@ -278,7 +278,7 @@ double BrickSearch::getPixPercent(const cv::Mat image)
 
 bool BrickSearch::findBrick(const cv::Mat image)
 {
-  const double redPixThres = 0.01;
+  const double redPixThres = 0.02;
   double redPixPerc = 0.;
   ROS_INFO_STREAM("Locate Brick");
 
