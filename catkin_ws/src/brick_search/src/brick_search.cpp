@@ -631,7 +631,7 @@ void BrickSearch::mainLoop()
         ROS_INFO_STREAM("Reached goal, gonna spin");
         ros::Time time = ros::Time::now();
         ros::Time newtime;
-        ros::Duration d = ros::Duration(20, 0);
+        ros::Duration d = ros::Duration(15, 0);
         while (ros::ok())
         {
           if ((newtime - time) > d || brick_found_)
