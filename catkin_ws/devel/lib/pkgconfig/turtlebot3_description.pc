@@ -1,8 +1,8 @@
-prefix=/home/will/RoboticsProject/catkin_ws/devel
+prefix=/home/will/Documents/RobSmells/RoboticsProject/catkin_ws/devel
 
 Name: turtlebot3_description
 Description: Description of turtlebot3_description
 Version: 1.2.1
 Cflags: 
-Libs: -L/home/will/RoboticsProject/catkin_ws/devel/lib 
+Libs: -L/home/will/Documents/RobSmells/RoboticsProject/catkin_ws/devel/lib 
 Requires: urdf xacro
