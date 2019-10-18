@@ -136,16 +136,19 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
     ROS_INFO("Map received");
   }
 
+  // Create occupancy grid for map
   occupancy_grid_ = OccupancyGrid(map_, inflation_radius_);
-
-  ROS_INFO("Print dat data bitch");
 
   int y = 0;
   GridPosition currGridPos;
   WorldPosition currWorldPos;
+  // Iterate through map cells
   for (int i = 0; i < map_.info.width * map_.info.height; i++)
   {
+    // Get occupancy data from map_.data
     int data = map_.data[i];
+
+    // If cell is unoccupied, calculate x and y grid coordinates and world position, push onto vector of valid world positions
     if (data != -1 && data != 100)
     {
       // Store valid Grid Position
@@ -163,12 +166,6 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
   ROS_INFO("Number of Valid Grid Positions %d", validGridPos.size());
   ROS_INFO("Number of Valid World Positions %d", validWorldPos.size());
   divideValidPos(validWorldPos);
-
-  // Create an occupancy grid from the occupancy grid message
-  occupancy_grid_ = OccupancyGrid(get_map.response.map, inflation_radius_);
-
-  inflated_map_pub_ = nh.advertise<nav_msgs::OccupancyGrid>("map_inflated", 1, true);
-  inflated_map_pub_.publish(occupancy_grid_.getOccupancyGridMsg());
 
   // Wait for the transform to be become available
   ROS_INFO("Waiting for transform from \"map\" to \"base_link\"");
@@ -195,9 +192,9 @@ BrickSearch::BrickSearch(ros::NodeHandle &nh) : it_{nh}
   ros::ServiceClient global_localization_service_client = nh.serviceClient<std_srvs::Empty>("global_localization");
   std_srvs::Empty srv{};
   global_localization_service_client.call(srv);
-  // std::cin.get();
 }
 
+// Given vector of valid world positions, select random element in vector and return it
 WorldPosition BrickSearch::findRandGoal(const std::vector<WorldPosition> worldPositions)
 {
   int numPos = worldPositions.size();
@@ -253,6 +250,7 @@ void BrickSearch::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStampe
   }
 }
 
+// Given single channel image, find percentage of non-zero (white) pixels in image
 double BrickSearch::getPixPercent(const cv::Mat image)
 {
   cv::Size imageSize = image.size();
@@ -260,19 +258,20 @@ double BrickSearch::getPixPercent(const cv::Mat image)
   cv::Vec3b tempVec;
   double whitePixPerc = 0.;
 
+  // Calculate total number of pixels
   int32_t imagePix = imageSize.height * imageSize.width;
-  ROS_INFO_STREAM("x: " << imageSize.width);
-  ROS_INFO_STREAM("y: " << imageSize.height);
 
+  // Count non-zero pixels
   whitePixCnt = cv::countNonZero(image);
 
+  // Find percentage (kinda) of non-zero pixels, print to info stream and return percentage
   whitePixPerc = whitePixCnt / (double)imagePix;
 
-  ROS_INFO_STREAM("White Pixels: " << whitePixCnt);
   ROS_INFO_STREAM("% White Pixels: " << whitePixPerc);
   return whitePixPerc;
 }
 
+// Given single channel image, calculate if percentage is over given threshold, return whether true or false
 bool BrickSearch::findBrick(const cv::Mat image)
 {
   const double redPixThres = 0.02;
@@ -280,8 +279,6 @@ bool BrickSearch::findBrick(const cv::Mat image)
   ROS_INFO_STREAM("Locate Brick");
 
   redPixPerc = getPixPercent(image);
-
-  ROS_INFO_STREAM("% Red Pixels: " << redPixPerc);
 
   if (redPixPerc > redPixThres)
   {
@@ -291,6 +288,7 @@ bool BrickSearch::findBrick(const cv::Mat image)
   return false;
 }
 
+// Gets largest of three variables
 double BrickSearch::getLargest(const double n1, const double n2, const double n3)
 {
 
@@ -310,6 +308,7 @@ double BrickSearch::getLargest(const double n1, const double n2, const double n3
   }
 }
 
+// Given image, split into thirds, calculate largest pixel percentage, move left, right or forward depending on which is largest. Returns true if image contains >1% white pixels
 bool BrickSearch::moveToBrick(const cv::Mat image)
 {
   ROS_INFO_STREAM("Move To Brick");
@@ -319,26 +318,30 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
   double pixLeft, pixMid, pixRight;
   geometry_msgs::Twist twist{};
 
+  // Crop image into thirds (|||)
   cv::Mat image_Left = image(cv::Range(0, segHeight - 1), cv::Range(0, segWidth - 1));
   cv::Mat image_Mid = image(cv::Range(0, segHeight - 1), cv::Range(segWidth, (segWidth * 2) - 1));
   cv::Mat image_Right = image(cv::Range(0, segHeight - 1), cv::Range((segWidth * 2), (segWidth * 3) - 1));
 
-  ROS_INFO_STREAM("Image Left %");
+  // Calculate pixel percentage of each third and find largest
   pixLeft = getPixPercent(image_Left);
-  ROS_INFO_STREAM("Image Mid %");
   pixMid = getPixPercent(image_Mid);
-  ROS_INFO_STREAM("Image Right %");
   pixRight = getPixPercent(image_Right);
-
   double largest = getLargest(pixLeft, pixMid, pixRight);
+
+  // Ensure all movement is cleared, prevents unwanted twisting
   twist.angular.z = 0.;
   twist.linear.x = 0.;
+
+  // If white pixels <1%, return no match
   if (largest < 0.01)
   {
     largest = 0;
     ROS_INFO_STREAM("No Match");
     match = false;
   }
+
+  // Spin to left or right if outer thirds are larger, otherwise move forward
   else if (largest == pixLeft)
   {
     ROS_INFO_STREAM("LEFT IS BIGGEST");
@@ -355,6 +358,7 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
     twist.angular.z = -0.1;
   }
 
+  // If middle third is >90% white pixels, brick is considered found. Stop all movement and shut down node
   if (pixMid > 0.9)
   {
     twist.angular.z = 0.;
@@ -365,19 +369,21 @@ bool BrickSearch::moveToBrick(const cv::Mat image)
     ros::shutdown();
   }
 
+  // Publish twist command and return if match was found
   cmd_vel_pub_.publish(twist);
 
   return match;
 }
 
+// Function runs every 5 frames, takes sensor_msg image
 void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
 {
-  // Use this method to identify when the brick is visible
+  // Create booleans for if the brick has been identified and whether movement has already been cancelled
   static bool brickIDd = false;
   static bool moveCancelled = false;
   geometry_msgs::Twist twist{};
 
-  // The camera publishes at 30 fps, it's probably a good idea to analyse images at a lower rate than that
+  // Ensures function will only run every 5 frames
   if (image_msg_count_ < 5)
   {
     image_msg_count_++;
@@ -471,11 +477,9 @@ void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::Mov
   pose2d.x = worldPos.x;
   pose2d.y = worldPos.y;
 
-  ROS_INFO_STREAM("Target pose: " << pose2d);
-
+  // Update action goal and send
   actionGoal.goal.target_pose.pose = pose2dToPose(pose2d);
 
-  ROS_INFO("Sending goal...");
   move_base_action_client_.sendGoal(actionGoal.goal);
 }
 
@@ -512,6 +516,7 @@ void BrickSearch::divideValidPos(const std::vector<WorldPosition> worldPositions
   avePos.x = (minPos.x + maxPos.x) / 2.;
   avePos.y = (minPos.y + maxPos.y) / 2.;
 
+  // Iterate through valid world positions, add to different quadrants depending on position
   for (auto pos : worldPositions)
   {
     if (pos.x >= avePos.x && pos.y >= avePos.y)
@@ -640,7 +645,6 @@ void BrickSearch::mainLoop()
           twist.angular.z = 0.5;
           cmd_vel_pub_.publish(twist);
         }
-        ROS_INFO_STREAM("Stop spinning");
         twist.angular.z = 0.;
         cmd_vel_pub_.publish(twist);
         sendRandGoal(getPose2d(), action_goal);
