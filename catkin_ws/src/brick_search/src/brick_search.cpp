@@ -394,29 +394,33 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
   // This is the OpenCV image
   cv::Mat &image = image_ptr->image;
 
+  // Create thresholds for inRange command and create empty opencv image to contain mask
   static cv::Scalar upperRed = cv::Scalar(50, 50, 255);
   static cv::Scalar lowerRed = cv::Scalar(0, 0, 100);
 
   static cv::Mat redImage;
 
+  // Find pixels within threshold range
   cv::inRange(image, lowerRed, upperRed, redImage);
 
+  // If brick has not been identified
   if (!brickIDd)
   {
+    // Make sure movement has not been cancelled, set brick as not found, see if brick is visible
     moveCancelled = false;
     brick_found_ = false;
     brickIDd = findBrick(redImage);
   }
-  else
+
+  // If brick has been identified, ensure goals and movement have been stopped and start navigating to brick
+  if (brickIDd)
   {
     if (!moveCancelled)
     {
-      ROS_INFO_STREAM("Goals shitcanned");
       move_base_action_client_.cancelAllGoals();
       twist.angular.z = 0.;
       twist.linear.x = 0.;
       cmd_vel_pub_.publish(twist);
-      ROS_INFO_STREAM("Movement stopped");
       moveCancelled = true;
     }
     brick_found_ = true;
@@ -424,16 +428,16 @@ void BrickSearch::imageCallback(const sensor_msgs::ImageConstPtr &image_msg_ptr)
     brickIDd = moveToBrick(redImage);
   }
 
-  ROS_INFO_STREAM("Number of Pixels: " << redImage.size());
-
   ROS_INFO("imageCallback");
   ROS_INFO_STREAM("brick_found_: " << brick_found_);
 }
 
+// Rotates through 4 map quadrants and selects random goal from each
 void BrickSearch::sendRandGoal(geometry_msgs::Pose2D pose2d, move_base_msgs::MoveBaseActionGoal actionGoal)
 {
   WorldPosition worldPos;
-  ROS_INFO_STREAM("Current pose: " << pose2d);
+
+  //
   if (quadNum == 0)
   {
     // Generate Random Goal
